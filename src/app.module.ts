@@ -23,13 +23,14 @@ import { ReportsModule } from './modules/reports/reports.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { UploadsModule } from './modules/uploads/uploads.module.js';
 import { JobsModule } from './modules/jobs/jobs.module.js';
+import { HealthModule } from './modules/health/health.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     BullModule.forRoot({
-      redis: {
+      redis: process.env.REDIS_URL ?? {
         host: process.env.REDIS_HOST ?? 'localhost',
         port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
       },
@@ -55,6 +56,7 @@ import { JobsModule } from './modules/jobs/jobs.module.js';
     AuditModule,
     UploadsModule,
     JobsModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

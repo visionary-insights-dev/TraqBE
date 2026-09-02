@@ -10,9 +10,6 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Global prefix
-  app.setGlobalPrefix('api/v1');
-
   // Security
   app.use(helmet());
 
