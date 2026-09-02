@@ -1,0 +1,568 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum Role {
+  SUPER_ADMIN
+  MENTOR
+  SCHOLAR
+}
+
+enum MembershipType {
+  SCHOLAR
+  MENTOR
+}
+
+enum AssignmentStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+}
+
+enum ScholarAssignmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  PENDING_VERIFICATION
+  VERIFIED
+  VERIFIED_LATE
+  RESUBMISSION_REQUIRED
+  OVERDUE
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// =============================================================================
+// TABLES
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// ORGANIZATIONS — root entity (NOT tenant-scoped)
+// ---------------------------------------------------------------------------
+model Organization {
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String
+  slug       String    @unique
+  logo_url   String?
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @updatedAt @db.Timestamptz
+  archived_at DateTime? @db.Timestamptz
+
+  settings              OrganizationSetting[]
+  user_roles            UserRole[]
+  programs              Program[]
+  program_memberships   ProgramMembership[]
+  courses               Course[]
+  course_memberships    CourseMembership[]
+  mentor_scholar_assignments MentorScholarAssignment[]
+  resources             Resource[]
+  assignments           Assignment[]
+  scholar_assignments   ScholarAssignment[]
+  assignment_change_requests AssignmentChangeRequest[]
+  meetings              Meeting[]
+  attendance_records    AttendanceRecord[]
+  notifications         Notification[]
+  report_exports        ReportExport[]
+  audit_logs            AuditLog[]
+
+  @@map("organizations")
+}
+
+// ---------------------------------------------------------------------------
+// ORGANIZATION_SETTINGS — tenant
+// ---------------------------------------------------------------------------
+model OrganizationSetting {
+  id              String    @id @default(uuid()) @db.Uuid
+  organization_id String    @db.Uuid
+  key             String
+  value           Json
+  created_at      DateTime  @default(now()) @db.Timestamptz
+  updated_at      DateTime  @updatedAt @db.Timestamptz
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+
+  @@unique([organization_id, key])
+  @@index([organization_id])
+  @@map("organization_settings")
+}
+
+// ---------------------------------------------------------------------------
+// USERS — shared across organizations (no org_id)
+// ---------------------------------------------------------------------------
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  email         String
+  name          String
+  password_hash String
+  avatar_url    String?
+  created_at    DateTime  @default(now()) @db.Timestamptz
+  updated_at    DateTime  @updatedAt @db.Timestamptz
+  archived_at   DateTime? @db.Timestamptz
+
+  user_roles                  UserRole[]
+  program_memberships         ProgramMembership[]
+  course_memberships          CourseMembership[]
+  mentor_scholar_assignments_as_mentor   MentorScholarAssignment[] @relation("MentorScholarMentor")
+  mentor_scholar_assignments_as_scholar  MentorScholarAssignment[] @relation("MentorScholarScholar")
+  resources                   Resource[]
+  scholar_assignments         ScholarAssignment[]
+  scholar_assignments_verified ScholarAssignment[] @relation("ScholarAssignmentVerifiedBy")
+  meetings_recorded           Meeting[]              @relation("MeetingRecordedBy")
+  attendance_records          AttendanceRecord[]
+  attendance_records_recorded AttendanceRecord[]     @relation("AttendanceRecordedBy")
+  notification_deliveries     NotificationDelivery[]
+  report_exports              ReportExport[]
+  audit_logs                  AuditLog[]
+
+  @@unique([email])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// USER_ROLES — tenant (links users to orgs with roles)
+// ---------------------------------------------------------------------------
+model UserRole {
+  id              String    @id @default(uuid()) @db.Uuid
+  organization_id String    @db.Uuid
+  user_id         String    @db.Uuid
+  role            Role
+  created_at      DateTime  @default(now()) @db.Timestamptz
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Restrict)
+
+  @@unique([organization_id, user_id, role])
+  @@index([organization_id])
+  @@index([user_id])
+  @@index([role])
+  @@map("user_roles")
+}
+
+// ---------------------------------------------------------------------------
+// PROGRAMS — tenant
+// ---------------------------------------------------------------------------
+model Program {
+  id              String    @id @default(uuid()) @db.Uuid
+  organization_id String    @db.Uuid
+  name            String
+  description     String?
+  starts_at       DateTime? @db.Timestamptz
+  ends_at         DateTime? @db.Timestamptz
+  weights         Json?     @default("{\"assignment\": 70, \"attendance\": 30}")
+  at_risk_config  Json?     @default("{\"attendance_threshold\": 70, \"score_threshold\": 60, \"overdue_threshold\": 3}")
+  created_at      DateTime  @default(now()) @db.Timestamptz
+  updated_at      DateTime  @updatedAt @db.Timestamptz
+  archived_at     DateTime? @db.Timestamptz
+
+  organization             Organization          @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  program_memberships      ProgramMembership[]
+  courses                  Course[]
+  mentor_scholar_assignments MentorScholarAssignment[]
+  assignments              Assignment[]
+
+  @@index([organization_id])
+  @@index([archived_at])
+  @@map("programs")
+}
+
+// ---------------------------------------------------------------------------
+// PROGRAM_MEMBERSHIPS — tenant
+// ---------------------------------------------------------------------------
+model ProgramMembership {
+  id              String         @id @default(uuid()) @db.Uuid
+  organization_id String         @db.Uuid
+  program_id      String         @db.Uuid
+  user_id         String         @db.Uuid
+  type            MembershipType
+  created_at      DateTime       @default(now()) @db.Timestamptz
+  updated_at      DateTime       @updatedAt @db.Timestamptz
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  program      Program      @relation(fields: [program_id], references: [id], onDelete: Restrict)
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Restrict)
+
+  @@unique([program_id, user_id])
+  @@index([organization_id])
+  @@index([program_id])
+  @@index([user_id])
+  @@index([type])
+  @@map("program_memberships")
+}
+
+// ---------------------------------------------------------------------------
+// COURSES — tenant
+// ---------------------------------------------------------------------------
+model Course {
+  id              String    @id @default(uuid()) @db.Uuid
+  organization_id String    @db.Uuid
+  program_id      String    @db.Uuid
+  name            String
+  description     String?
+  created_at      DateTime  @default(now()) @db.Timestamptz
+  updated_at      DateTime  @updatedAt @db.Timestamptz
+  archived_at     DateTime? @db.Timestamptz
+
+  organization      Organization       @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  program           Program            @relation(fields: [program_id], references: [id], onDelete: Restrict)
+  course_memberships CourseMembership[]
+  assignments       Assignment[]
+  meetings          Meeting[]
+
+  @@index([organization_id])
+  @@index([program_id])
+  @@index([archived_at])
+  @@map("courses")
+}
+
+// ---------------------------------------------------------------------------
+// COURSE_MEMBERSHIPS — tenant
+// ---------------------------------------------------------------------------
+model CourseMembership {
+  id              String    @id @default(uuid()) @db.Uuid
+  organization_id String    @db.Uuid
+  course_id       String    @db.Uuid
+  user_id         String    @db.Uuid
+  created_at      DateTime  @default(now()) @db.Timestamptz
+  updated_at      DateTime  @updatedAt @db.Timestamptz
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  course       Course       @relation(fields: [course_id], references: [id], onDelete: Restrict)
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Restrict)
+
+  @@unique([course_id, user_id])
+  @@index([organization_id])
+  @@index([course_id])
+  @@index([user_id])
+  @@map("course_memberships")
+}
+
+// ---------------------------------------------------------------------------
+// MENTOR_SCHOLAR_ASSIGNMENTS — tenant
+// ---------------------------------------------------------------------------
+model MentorScholarAssignment {
+  id              String     @id @default(uuid()) @db.Uuid
+  organization_id String     @db.Uuid
+  mentor_id       String     @db.Uuid
+  scholar_id      String     @db.Uuid
+  program_id      String     @db.Uuid
+  starts_at       DateTime?  @db.Timestamptz
+  ends_at         DateTime?  @db.Timestamptz
+  created_at      DateTime   @default(now()) @db.Timestamptz
+  updated_at      DateTime   @updatedAt @db.Timestamptz
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  mentor       User         @relation("MentorScholarMentor", fields: [mentor_id], references: [id], onDelete: Restrict)
+  scholar      User         @relation("MentorScholarScholar", fields: [scholar_id], references: [id], onDelete: Restrict)
+  program      Program      @relation(fields: [program_id], references: [id], onDelete: Restrict)
+
+  @@index([organization_id])
+  @@index([mentor_id])
+  @@index([scholar_id])
+  @@index([program_id])
+  @@map("mentor_scholar_assignments")
+}
+
+// ---------------------------------------------------------------------------
+// RESOURCES — tenant
+// ---------------------------------------------------------------------------
+model Resource {
+  id              String    @id @default(uuid()) @db.Uuid
+  organization_id String    @db.Uuid
+  object_key      String
+  file_name       String
+  mime_type       String
+  size_bytes      Int
+  uploader_id     String    @db.Uuid
+  created_at      DateTime  @default(now()) @db.Timestamptz
+  updated_at      DateTime  @updatedAt @db.Timestamptz
+
+  organization         Organization         @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  uploader             User                 @relation(fields: [uploader_id], references: [id], onDelete: Restrict)
+  assignment_resources AssignmentResource[]
+
+  @@index([organization_id])
+  @@index([uploader_id])
+  @@map("resources")
+}
+
+// ---------------------------------------------------------------------------
+// ASSIGNMENT_RESOURCES — tenant (join table)
+// ---------------------------------------------------------------------------
+model AssignmentResource {
+  id              String    @id @default(uuid()) @db.Uuid
+  assignment_id   String    @db.Uuid
+  resource_id     String    @db.Uuid
+  created_at      DateTime  @default(now()) @db.Timestamptz
+
+  assignment Assignment @relation(fields: [assignment_id], references: [id], onDelete: Restrict)
+  resource   Resource   @relation(fields: [resource_id], references: [id], onDelete: Restrict)
+
+  @@index([assignment_id])
+  @@index([resource_id])
+  @@map("assignment_resources")
+}
+
+// ---------------------------------------------------------------------------
+// ASSIGNMENTS — tenant
+// ---------------------------------------------------------------------------
+model Assignment {
+  id              String           @id @default(uuid()) @db.Uuid
+  organization_id String           @db.Uuid
+  course_id       String           @db.Uuid
+  program_id      String?          @db.Uuid
+  title           String
+  description     String?
+  status          AssignmentStatus @default(DRAFT)
+  due_at          DateTime?        @db.Timestamptz
+  max_score       Int              @default(100)
+  published_at    DateTime?        @db.Timestamptz
+  created_at      DateTime         @default(now()) @db.Timestamptz
+  updated_at      DateTime         @updatedAt @db.Timestamptz
+  archived_at     DateTime?        @db.Timestamptz
+
+  organization          Organization              @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  course                Course                    @relation(fields: [course_id], references: [id], onDelete: Restrict)
+  program               Program?                  @relation(fields: [program_id], references: [id], onDelete: Restrict)
+  assignment_resources  AssignmentResource[]
+  scholar_assignments   ScholarAssignment[]
+
+  @@index([organization_id])
+  @@index([course_id])
+  @@index([program_id])
+  @@index([status])
+  @@index([due_at])
+  @@index([archived_at])
+  @@map("assignments")
+}
+
+// ---------------------------------------------------------------------------
+// SCHOLAR_ASSIGNMENTS — tenant
+// ---------------------------------------------------------------------------
+model ScholarAssignment {
+  id              String                  @id @default(uuid()) @db.Uuid
+  organization_id String                  @db.Uuid
+  assignment_id   String                  @db.Uuid
+  scholar_id      String                  @db.Uuid
+  status          ScholarAssignmentStatus @default(NOT_STARTED)
+  score           Int?
+  marked_done_at  DateTime?               @db.Timestamptz
+  verified_at     DateTime?               @db.Timestamptz
+  verified_by     String?                 @db.Uuid
+  created_at      DateTime                @default(now()) @db.Timestamptz
+  updated_at      DateTime                @updatedAt @db.Timestamptz
+
+  organization              Organization               @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  assignment                Assignment                  @relation(fields: [assignment_id], references: [id], onDelete: Restrict)
+  scholar                   User                        @relation(fields: [scholar_id], references: [id], onDelete: Restrict)
+  verifiedByUser            User?                       @relation("ScholarAssignmentVerifiedBy", fields: [verified_by], references: [id], onDelete: Restrict)
+  assignment_change_requests AssignmentChangeRequest[]
+
+  @@unique([assignment_id, scholar_id])
+  @@index([organization_id])
+  @@index([assignment_id])
+  @@index([scholar_id])
+  @@index([status])
+  @@map("scholar_assignments")
+}
+
+// ---------------------------------------------------------------------------
+// ASSIGNMENT_CHANGE_REQUESTS — tenant
+// ---------------------------------------------------------------------------
+model AssignmentChangeRequest {
+  id                    String               @id @default(uuid()) @db.Uuid
+  organization_id       String               @db.Uuid
+  scholar_assignment_id String               @db.Uuid
+  reason                String
+  status                ChangeRequestStatus  @default(PENDING)
+  reviewed_by           String?              @db.Uuid
+  created_at            DateTime             @default(now()) @db.Timestamptz
+  updated_at            DateTime             @updatedAt @db.Timestamptz
+
+  organization     Organization      @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  scholar_assignment ScholarAssignment @relation(fields: [scholar_assignment_id], references: [id], onDelete: Restrict)
+
+  @@index([organization_id])
+  @@index([scholar_assignment_id])
+  @@index([status])
+  @@map("assignment_change_requests")
+}
+
+// ---------------------------------------------------------------------------
+// MEETINGS — tenant
+// ---------------------------------------------------------------------------
+model Meeting {
+  id              String    @id @default(uuid()) @db.Uuid
+  organization_id String    @db.Uuid
+  course_id       String    @db.Uuid
+  title           String
+  description     String?
+  starts_at       DateTime  @db.Timestamptz
+  ends_at         DateTime? @db.Timestamptz
+  recorded_by     String?   @db.Uuid
+  created_at      DateTime  @default(now()) @db.Timestamptz
+  updated_at      DateTime  @updatedAt @db.Timestamptz
+
+  organization        Organization         @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  course              Course               @relation(fields: [course_id], references: [id], onDelete: Restrict)
+  recordedByUser      User?                @relation("MeetingRecordedBy", fields: [recorded_by], references: [id], onDelete: Restrict)
+  attendance_records  AttendanceRecord[]
+
+  @@index([organization_id])
+  @@index([course_id])
+  @@index([starts_at])
+  @@map("meetings")
+}
+
+// ---------------------------------------------------------------------------
+// ATTENDANCE_RECORDS — tenant
+// ---------------------------------------------------------------------------
+model AttendanceRecord {
+  id              String           @id @default(uuid()) @db.Uuid
+  organization_id String           @db.Uuid
+  meeting_id      String           @db.Uuid
+  scholar_id      String           @db.Uuid
+  status          AttendanceStatus
+  notes           String?
+  recorded_by     String?          @db.Uuid
+  created_at      DateTime         @default(now()) @db.Timestamptz
+  updated_at      DateTime         @updatedAt @db.Timestamptz
+
+  organization  Organization @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  meeting       Meeting      @relation(fields: [meeting_id], references: [id], onDelete: Restrict)
+  scholar       User         @relation(fields: [scholar_id], references: [id], onDelete: Restrict)
+  recordedBy    User?        @relation("AttendanceRecordedBy", fields: [recorded_by], references: [id], onDelete: Restrict)
+
+  @@unique([meeting_id, scholar_id])
+  @@index([organization_id])
+  @@index([meeting_id])
+  @@index([scholar_id])
+  @@index([status])
+  @@map("attendance_records")
+}
+
+// ---------------------------------------------------------------------------
+// NOTIFICATIONS — tenant
+// ---------------------------------------------------------------------------
+model Notification {
+  id              String    @id @default(uuid()) @db.Uuid
+  organization_id String    @db.Uuid
+  title           String
+  body            String
+  type            String
+  metadata        Json?
+  created_at      DateTime  @default(now()) @db.Timestamptz
+  updated_at      DateTime  @updatedAt @db.Timestamptz
+
+  organization     Organization           @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  deliveries       NotificationDelivery[]
+
+  @@index([organization_id])
+  @@index([type])
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// NOTIFICATION_DELIVERIES — tenant
+// ---------------------------------------------------------------------------
+model NotificationDelivery {
+  id              String              @id @default(uuid()) @db.Uuid
+  notification_id String              @db.Uuid
+  user_id         String              @db.Uuid
+  channel         NotificationChannel
+  status          DeliveryStatus      @default(PENDING)
+  sent_at         DateTime?           @db.Timestamptz
+  created_at      DateTime            @default(now()) @db.Timestamptz
+  updated_at      DateTime            @updatedAt @db.Timestamptz
+
+  notification Notification @relation(fields: [notification_id], references: [id], onDelete: Restrict)
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Restrict)
+
+  @@index([notification_id])
+  @@index([user_id])
+  @@index([status])
+  @@map("notification_deliveries")
+}
+
+// ---------------------------------------------------------------------------
+// REPORT_EXPORTS — tenant
+// ---------------------------------------------------------------------------
+model ReportExport {
+  id              String       @id @default(uuid()) @db.Uuid
+  organization_id String       @db.Uuid
+  type            String
+  parameters      Json?
+  status          ReportStatus @default(PENDING)
+  file_url        String?
+  requested_by    String       @db.Uuid
+  created_at      DateTime     @default(now()) @db.Timestamptz
+  updated_at      DateTime     @updatedAt @db.Timestamptz
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  requestedBy  User         @relation(fields: [requested_by], references: [id], onDelete: Restrict)
+
+  @@index([organization_id])
+  @@index([status])
+  @@index([requested_by])
+  @@map("report_exports")
+}
+
+// ---------------------------------------------------------------------------
+// AUDIT_LOGS — tenant (append-only)
+// ---------------------------------------------------------------------------
+model AuditLog {
+  id              String    @id @default(uuid()) @db.Uuid
+  organization_id String    @db.Uuid
+  actor_id        String    @db.Uuid
+  action          String
+  entity_type     String
+  entity_id       String
+  metadata        Json?
+  ip_address      String?
+  created_at      DateTime  @default(now()) @db.Timestamptz
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  actor        User         @relation(fields: [actor_id], references: [id], onDelete: Restrict)
+
+  @@index([organization_id])
+  @@index([actor_id])
+  @@index([entity_type, entity_id])
+  @@index([action])
+  @@index([created_at])
+  @@map("audit_logs")
+}
