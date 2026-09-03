@@ -1,3 +1,4 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { UserManagementService } from './users.service.js';

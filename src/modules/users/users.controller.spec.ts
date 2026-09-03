@@ -1,3 +1,4 @@
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { INestApplication, ValidationPipe, CanActivate, ExecutionContext, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';

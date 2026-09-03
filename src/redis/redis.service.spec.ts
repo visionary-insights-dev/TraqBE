@@ -1,3 +1,4 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { RedisService } from './redis.service.js';
 import { ConfigService } from '@nestjs/config';
 

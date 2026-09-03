@@ -1,3 +1,4 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AuthService, REFRESH_COOKIE_NAME } from './auth.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { JwtService } from '@nestjs/jwt';
