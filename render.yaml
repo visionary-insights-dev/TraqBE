@@ -48,8 +48,7 @@ services:
         sync: false
       - key: SENTRY_DSN
         sync: false
-
-   - type: redis
+  - type: redis
     name: traq-redis
     region: frankfurt
     plan: free
@@ -63,5 +62,3 @@ databases:
     databaseName: traq
     region: frankfurt
     plan: free
-
-
