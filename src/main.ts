@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -6,12 +7,18 @@ import { AppModule } from './app.module.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor.js';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor.js';
+import { RateLimitMiddleware } from './common/middleware/rate-limit.middleware.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Security
   app.use(helmet());
+
+  // Rate limiting (Redis-backed replacement for @nestjs/throttler)
+  const configService = app.get(ConfigService);
+  const rateLimit = new RateLimitMiddleware(configService);
+  app.use(rateLimit.use.bind(rateLimit));
 
   // CORS
   app.enableCors({
