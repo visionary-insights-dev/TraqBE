@@ -1,3 +1,4 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
 import { OrganizationsService, ORG_SETTINGS_DEFAULTS } from './organizations.service.js';
 
