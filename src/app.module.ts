@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bull';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { RedisModule } from './redis/redis.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { UserManagementModule } from './modules/users/users.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
@@ -34,6 +35,7 @@ import { HealthModule } from './modules/health/health.module.js';
       },
     }),
     PrismaModule,
+    RedisModule,
     AuthModule,
     UserManagementModule,
     OrganizationsModule,
