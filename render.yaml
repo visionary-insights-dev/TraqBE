@@ -5,7 +5,7 @@ services:
     region: frankfurt
     plan: free
     branch: main
-    buildCommand: npm install --legacy-peer-deps && npx prisma generate && npx nest build && npx prisma migrate deploy
+    buildCommand: npm install --legacy-peer-deps && npx nest build && npx prisma migrate deploy
     startCommand: node dist/main.js
     healthCheckPath: /api/v1/health
     envVars:
