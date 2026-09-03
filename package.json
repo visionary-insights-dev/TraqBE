@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@nestjs/bull": "^12.0.0",
+    "@nestjs/cli": "^12.0.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^12.0.1",
@@ -54,7 +55,6 @@
     "uuid": "^14.0.2"
   },
   "devDependencies": {
-    "@nestjs/cli": "^12.0.0",
     "@nestjs/mau": "^0.2.6",
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
