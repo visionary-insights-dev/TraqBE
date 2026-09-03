@@ -2,6 +2,14 @@ import { BullModule } from '@nestjs/bull';
 
 export const EMAIL_QUEUE = 'email';
 
+export interface EmailDispatchJobData {
+  organizationId: string;
+  to: string;
+  subject: string;
+  html: string;
+  notificationId?: string;
+}
+
 export const EmailQueueModule = BullModule.registerQueue({
   name: EMAIL_QUEUE,
   defaultJobOptions: {
