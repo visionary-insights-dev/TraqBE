@@ -24,6 +24,20 @@ export const PERMISSION_ROLES: Record<string, Role[]> = {
   // Any authenticated user (self-service)
   'users.me.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
   'users.me.update': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+
+  // Programs
+  'programs.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+  'programs.create': [Role.SUPER_ADMIN],
+  'programs.update': [Role.SUPER_ADMIN],
+  'programs.archive': [Role.SUPER_ADMIN],
+  'programs.manage_members': [Role.SUPER_ADMIN],
+
+  // Courses
+  'courses.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+  'courses.create': [Role.SUPER_ADMIN],
+  'courses.update': [Role.SUPER_ADMIN],
+  'courses.archive': [Role.SUPER_ADMIN],
+  'courses.manage_members': [Role.SUPER_ADMIN],
 };
 
 /**
