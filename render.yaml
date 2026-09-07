@@ -33,7 +33,7 @@ services:
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
       - key: CORS_ORIGIN
-        value: https://your-netlify-app.netlify.app
+        value: http://localhost:3001,http://localhost:3000,https://your-netlify-url.netlify.app
       - key: CLOUDFLARE_R2_ACCOUNT_ID
         sync: false
       - key: CLOUDFLARE_R2_ACCESS_KEY
