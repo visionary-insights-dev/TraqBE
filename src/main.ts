@@ -24,7 +24,20 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: true,
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      const allowed = (process.env.CORS_ORIGIN ?? '')
+        .split(',')
+        .map(o => o.trim())
+        .filter(Boolean)
+
+      if (!origin) return callback(null, true)
+
+      if (allowed.includes(origin)) {
+        callback(null, true)
+      } else {
+        callback(null, false)
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
