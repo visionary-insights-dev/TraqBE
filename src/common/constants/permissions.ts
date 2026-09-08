@@ -38,6 +38,12 @@ export const PERMISSION_ROLES: Record<string, Role[]> = {
   'courses.update': [Role.SUPER_ADMIN],
   'courses.archive': [Role.SUPER_ADMIN],
   'courses.manage_members': [Role.SUPER_ADMIN],
+
+  // Mentor Pairing
+  'mentor_assignments.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+  'mentor_assignments.create': [Role.SUPER_ADMIN],
+  'mentor_assignments.update': [Role.SUPER_ADMIN],
+  'mentor_assignments.delete': [Role.SUPER_ADMIN],
 };
 
 /**

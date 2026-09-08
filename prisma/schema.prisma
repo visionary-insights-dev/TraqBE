@@ -243,11 +243,12 @@ model Course {
   updated_at      DateTime  @updatedAt @db.Timestamptz
   archived_at     DateTime? @db.Timestamptz
 
-  organization      Organization       @relation(fields: [organization_id], references: [id], onDelete: Restrict)
-  program           Program            @relation(fields: [program_id], references: [id], onDelete: Restrict)
+  organization       Organization       @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  program            Program            @relation(fields: [program_id], references: [id], onDelete: Restrict)
   course_memberships CourseMembership[]
-  assignments       Assignment[]
-  meetings          Meeting[]
+  assignments        Assignment[]
+  meetings           Meeting[]
+  mentor_scholar_assignments MentorScholarAssignment[]
 
   @@index([organization_id])
   @@index([program_id])
@@ -286,6 +287,7 @@ model MentorScholarAssignment {
   mentor_id       String     @db.Uuid
   scholar_id      String     @db.Uuid
   program_id      String     @db.Uuid
+  course_id       String     @db.Uuid
   starts_at       DateTime?  @db.Timestamptz
   ends_at         DateTime?  @db.Timestamptz
   created_at      DateTime   @default(now()) @db.Timestamptz
@@ -295,11 +297,14 @@ model MentorScholarAssignment {
   mentor       User         @relation("MentorScholarMentor", fields: [mentor_id], references: [id], onDelete: Restrict)
   scholar      User         @relation("MentorScholarScholar", fields: [scholar_id], references: [id], onDelete: Restrict)
   program      Program      @relation(fields: [program_id], references: [id], onDelete: Restrict)
+  course       Course       @relation(fields: [course_id], references: [id], onDelete: Restrict)
 
   @@index([organization_id])
   @@index([mentor_id])
   @@index([scholar_id])
   @@index([program_id])
+  @@index([course_id])
+  @@index([scholar_id, course_id])
   @@map("mentor_scholar_assignments")
 }
 
