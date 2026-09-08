@@ -468,8 +468,8 @@ export class AuthService {
   private setRefreshCookie(response: Response, refreshToken: string): void {
     response.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       httpOnly: true,
-      secure: this.configService.get('NODE_ENV') === 'production',
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'none',
       path: '/api/v1/auth',
       maxAge: REFRESH_TOKEN_EXPIRY_MS,
     });
@@ -478,8 +478,8 @@ export class AuthService {
   private clearRefreshCookie(response: Response): void {
     response.clearCookie(REFRESH_COOKIE_NAME, {
       httpOnly: true,
-      secure: this.configService.get('NODE_ENV') === 'production',
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'none',
       path: '/api/v1/auth',
     });
   }
