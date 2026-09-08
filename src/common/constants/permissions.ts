@@ -24,6 +24,36 @@ export const PERMISSION_ROLES: Record<string, Role[]> = {
   // Any authenticated user (self-service)
   'users.me.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
   'users.me.update': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+
+  // Programs
+  'programs.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+  'programs.create': [Role.SUPER_ADMIN],
+  'programs.update': [Role.SUPER_ADMIN],
+  'programs.archive': [Role.SUPER_ADMIN],
+  'programs.manage_members': [Role.SUPER_ADMIN],
+
+  // Courses
+  'courses.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+  'courses.create': [Role.SUPER_ADMIN],
+  'courses.update': [Role.SUPER_ADMIN],
+  'courses.archive': [Role.SUPER_ADMIN],
+  'courses.manage_members': [Role.SUPER_ADMIN],
+
+  // Mentor Pairing
+  'mentor_assignments.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+  'mentor_assignments.create': [Role.SUPER_ADMIN],
+  'mentor_assignments.update': [Role.SUPER_ADMIN],
+  'mentor_assignments.delete': [Role.SUPER_ADMIN],
+
+  // Assignments
+  'assignments.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+  'assignments.create': [Role.SUPER_ADMIN, Role.MENTOR],
+  'assignments.update': [Role.SUPER_ADMIN, Role.MENTOR],
+  'assignments.publish': [Role.SUPER_ADMIN, Role.MENTOR],
+  'assignments.submit': [Role.SCHOLAR],
+  'assignments.verify': [Role.SUPER_ADMIN, Role.MENTOR],
+  'assignments.request_change': [Role.MENTOR],
+  'assignments.approve_change': [Role.SUPER_ADMIN],
 };
 
 /**
