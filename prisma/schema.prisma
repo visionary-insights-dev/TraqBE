@@ -148,6 +148,7 @@ model User {
   resources                   Resource[]
   scholar_assignments         ScholarAssignment[]
   scholar_assignments_verified ScholarAssignment[] @relation("ScholarAssignmentVerifiedBy")
+  assignments_created          Assignment[]         @relation("AssignmentCreator")
   meetings_recorded           Meeting[]              @relation("MeetingRecordedBy")
   attendance_records          AttendanceRecord[]
   attendance_records_recorded AttendanceRecord[]     @relation("AttendanceRecordedBy")
@@ -352,29 +353,34 @@ model AssignmentResource {
 // ASSIGNMENTS — tenant
 // ---------------------------------------------------------------------------
 model Assignment {
-  id              String           @id @default(uuid()) @db.Uuid
-  organization_id String           @db.Uuid
-  course_id       String           @db.Uuid
-  program_id      String?          @db.Uuid
-  title           String
-  description     String?
-  status          AssignmentStatus @default(DRAFT)
-  due_at          DateTime?        @db.Timestamptz
-  max_score       Int              @default(100)
-  published_at    DateTime?        @db.Timestamptz
-  created_at      DateTime         @default(now()) @db.Timestamptz
-  updated_at      DateTime         @updatedAt @db.Timestamptz
-  archived_at     DateTime?        @db.Timestamptz
+  id                      String           @id @default(uuid()) @db.Uuid
+  organization_id         String           @db.Uuid
+  course_id               String           @db.Uuid
+  program_id              String?          @db.Uuid
+  created_by              String?          @db.Uuid
+  title                   String
+  description             String?
+  status                  AssignmentStatus @default(DRAFT)
+  due_at                  DateTime?        @db.Timestamptz
+  max_score               Int              @default(100)
+  published_at            DateTime?        @db.Timestamptz
+  edit_window_expires_at  DateTime?        @db.Timestamptz
+  created_at              DateTime         @default(now()) @db.Timestamptz
+  updated_at              DateTime         @updatedAt @db.Timestamptz
+  archived_at             DateTime?        @db.Timestamptz
 
   organization          Organization              @relation(fields: [organization_id], references: [id], onDelete: Restrict)
   course                Course                    @relation(fields: [course_id], references: [id], onDelete: Restrict)
   program               Program?                  @relation(fields: [program_id], references: [id], onDelete: Restrict)
+  creator               User?                     @relation("AssignmentCreator", fields: [created_by], references: [id], onDelete: Restrict)
   assignment_resources  AssignmentResource[]
   scholar_assignments   ScholarAssignment[]
+  change_requests       AssignmentChangeRequest[]
 
   @@index([organization_id])
   @@index([course_id])
   @@index([program_id])
+  @@index([created_by])
   @@index([status])
   @@index([due_at])
   @@index([archived_at])
@@ -391,6 +397,8 @@ model ScholarAssignment {
   scholar_id      String                  @db.Uuid
   status          ScholarAssignmentStatus @default(NOT_STARTED)
   score           Int?
+  is_late         Boolean?                @db.Boolean
+  earned_credit   Float?                  @db.DoublePrecision
   marked_done_at  DateTime?               @db.Timestamptz
   verified_at     DateTime?               @db.Timestamptz
   verified_by     String?                 @db.Uuid
@@ -417,17 +425,24 @@ model ScholarAssignment {
 model AssignmentChangeRequest {
   id                    String               @id @default(uuid()) @db.Uuid
   organization_id       String               @db.Uuid
-  scholar_assignment_id String               @db.Uuid
+  assignment_id         String               @db.Uuid
+  scholar_assignment_id String?              @db.Uuid
+  field                 String
+  current_value         Json?                @db.Json
+  requested_value       Json?                @db.Json
   reason                String
+  admin_note            String?
   status                ChangeRequestStatus  @default(PENDING)
   reviewed_by           String?              @db.Uuid
   created_at            DateTime             @default(now()) @db.Timestamptz
   updated_at            DateTime             @updatedAt @db.Timestamptz
 
-  organization     Organization      @relation(fields: [organization_id], references: [id], onDelete: Restrict)
-  scholar_assignment ScholarAssignment @relation(fields: [scholar_assignment_id], references: [id], onDelete: Restrict)
+  organization      Organization       @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  assignment        Assignment         @relation(fields: [assignment_id], references: [id], onDelete: Restrict)
+  scholar_assignment ScholarAssignment? @relation(fields: [scholar_assignment_id], references: [id], onDelete: Restrict)
 
   @@index([organization_id])
+  @@index([assignment_id])
   @@index([scholar_assignment_id])
   @@index([status])
   @@map("assignment_change_requests")
