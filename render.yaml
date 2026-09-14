@@ -46,6 +46,8 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      - key: RESEND_FROM_EMAIL
+        value: Traq <no-reply@traq.app>
       - key: SENTRY_DSN
         sync: false
   - type: redis

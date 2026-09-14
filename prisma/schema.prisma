@@ -542,6 +542,7 @@ model NotificationDelivery {
   user_id         String              @db.Uuid
   channel         NotificationChannel
   status          DeliveryStatus      @default(PENDING)
+  read_at         DateTime?           @db.Timestamptz
   sent_at         DateTime?           @db.Timestamptz
   created_at      DateTime            @default(now()) @db.Timestamptz
   updated_at      DateTime            @updatedAt @db.Timestamptz
@@ -552,6 +553,7 @@ model NotificationDelivery {
   @@index([notification_id])
   @@index([user_id])
   @@index([status])
+  @@index([user_id, read_at])
   @@map("notification_deliveries")
 }
 

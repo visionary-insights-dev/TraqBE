@@ -1,15 +1,10 @@
-import { InjectQueue, Process, Processor } from '@nestjs/bull';
-import {
-  AssignmentStatus,
-  DeliveryStatus,
-  NotificationChannel,
-  ScholarAssignmentStatus,
-} from '@prisma/client';
+import { Process, Processor } from '@nestjs/bull';
+import { AssignmentStatus, NotificationChannel, ScholarAssignmentStatus } from '@prisma/client';
 import { Logger } from '@nestjs/common';
-import type { Job, Queue } from 'bull';
+import type { Job } from 'bull';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { NotificationsService } from '../../modules/notifications/notifications.service.js';
 import { ASSIGNMENTS_QUEUE } from '../queues/assignments.queue.js';
-import { EMAIL_QUEUE, type EmailDispatchJobData } from '../queues/email.queue.js';
 
 export interface AssignmentReminderJobData {
   assignmentId: string;
@@ -31,7 +26,7 @@ export class AssignmentReminderProcessor {
 
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailDispatchJobData>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   @Process('reminder')
@@ -106,40 +101,25 @@ export class AssignmentReminderProcessor {
       const body =
         type === '24h' ? 'Assignment due in 24 hours' : 'Assignment due in 1 hour';
 
-      // 3. In-app Notification + PENDING NotificationDelivery (org-scoped).
-      await this.prisma.$transaction(async (tx) => {
-        const notification = await tx.notification.create({
-          data: {
-            organization_id: organizationId,
-            title: 'Assignment reminder',
-            body,
-            type: 'assignment_reminder',
-            metadata: {
-              assignmentId,
-              scholarId,
-              type,
-            },
-          },
-        });
-
-        await tx.notificationDelivery.create({
-          data: {
-            notification_id: notification.id,
-            user_id: scholarId,
-            channel: NotificationChannel.IN_APP,
-            status: DeliveryStatus.PENDING,
-          },
-        });
-      });
-
-      // 4. Queue email dispatch — actual send is handled by EmailProcessor.
-      await this.emailQueue.add({
+      // 3. In-app + email notification (after commit — via NotificationsService).
+      await this.notifications.create({
         organizationId,
+        userId: scholarId,
         to: scholar.email,
-        subject,
-        html: `Assignment "<strong>${title}</strong>" is due on ${
-          dueAt?.toISOString() ?? 'the scheduled date'
-        }. Please submit before the deadline.`,
+        type: 'assignment_reminder',
+        title: 'Assignment reminder',
+        body,
+        metadata: {
+          assignmentId,
+          scholarId,
+          type,
+        },
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+        templateId: type === '24h' ? 'assignment_reminder_24h' : 'assignment_reminder_1h',
+        variables: {
+          title,
+          dueDate: dueAt ? dueAt.toISOString() : 'the scheduled date',
+        },
       });
 
       this.logger.log(

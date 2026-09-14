@@ -10,6 +10,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { OrganizationsService } from '../organizations/organizations.service.js';
+import { NotificationsGateway } from '../notifications/notifications.gateway.js';
 import { EmailDispatchJobData, EMAIL_QUEUE } from '../../jobs/queues/email.queue.js';
 import { ASSIGNMENTS_QUEUE } from '../../jobs/queues/assignments.queue.js';
 import { ANALYTICS_QUEUE } from '../../jobs/queues/analytics.queue.js';
@@ -44,6 +45,7 @@ export class AssignmentsService {
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailDispatchJobData>,
     @InjectQueue(ASSIGNMENTS_QUEUE) private readonly assignmentsQueue: Queue<AssignmentReminderJobData>,
     @InjectQueue(ANALYTICS_QUEUE) private readonly analyticsQueue: Queue<AnalyticsRefreshJobData>,
+    private readonly gateway: NotificationsGateway,
   ) {}
 
   // =========================================================================
@@ -519,6 +521,13 @@ export class AssignmentsService {
           earnedCredit,
           isLate: scholarAssignment.is_late ?? false,
         } as AuditMetadata,
+      });
+
+      // Realtime push to the affected scholar.
+      this.gateway.emitAssignmentStatusChanged(dto.scholarId, {
+        assignmentId: id,
+        scholarId: dto.scholarId,
+        newStatus: status,
       });
 
       return {

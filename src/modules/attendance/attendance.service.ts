@@ -1,12 +1,12 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
-import { AttendanceStatus } from '@prisma/client';
+import { AttendanceStatus, NotificationChannel } from '@prisma/client';
 import type { Queue } from 'bull';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { MeetingsService } from '../meetings/meetings.service.js';
 import { AnalyticsService } from '../analytics/analytics.service.js';
-import { EMAIL_QUEUE, type EmailDispatchJobData } from '../../jobs/queues/email.queue.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { ANALYTICS_QUEUE } from '../../jobs/queues/analytics.queue.js';
 import type { AnalyticsRefreshJobData } from '../../jobs/processors/analytics-refresh.processor.js';
 import type { RecordAttendanceDto } from './dto/record-attendance.dto.js';
@@ -19,7 +19,7 @@ export class AttendanceService {
     private readonly audit: AuditService,
     private readonly meetingsService: MeetingsService,
     private readonly analyticsService: AnalyticsService,
-    @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailDispatchJobData>,
+    private readonly notifications: NotificationsService,
     @InjectQueue(ANALYTICS_QUEUE) private readonly analyticsQueue: Queue<AnalyticsRefreshJobData>,
   ) {}
 
@@ -121,43 +121,23 @@ export class AttendanceService {
         );
       }
 
-      // 7. Notify scholars marked ABSENT
+      // 7. Notify scholars marked ABSENT (after commit — via NotificationsService)
       if (record.status === AttendanceStatus.ABSENT && isNew) {
-        // In-app notification
-        await this.prisma.$transaction(async (tx) => {
-          const notification = await tx.notification.create({
-            data: {
-              organization_id: organizationId,
-              title: 'Attendance marked absent',
-              body: `You have been marked absent for a meeting on ${meeting.starts_at.toISOString().split('T')[0]}.`,
-              type: 'attendance_absent',
-              metadata: {
-                meetingId,
-                scholarId: record.scholarId,
-              },
-            },
-          });
-
-          await tx.notificationDelivery.create({
-            data: {
-              notification_id: notification.id,
-              user_id: record.scholarId,
-              channel: 'IN_APP',
-              status: 'PENDING',
-            },
-          });
+        await this.notifications.create({
+          organizationId,
+          userId: record.scholarId,
+          to: emailById.get(record.scholarId),
+          type: 'attendance_absent',
+          title: 'Attendance marked absent',
+          body: `You have been marked absent for a meeting on ${meeting.starts_at.toISOString().split('T')[0]}.`,
+          metadata: {
+            meetingId,
+            scholarId: record.scholarId,
+          },
+          channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+          templateId: 'attendance_absent',
+          variables: { date: meeting.starts_at.toISOString().split('T')[0] },
         });
-
-        // Queue email
-        const email = emailById.get(record.scholarId);
-        if (email) {
-          await this.emailQueue.add({
-            organizationId,
-            to: email,
-            subject: 'Attendance marked absent',
-            html: `You have been marked absent for a meeting. Please contact your mentor if this is an error.`,
-          });
-        }
       }
 
       results.push({

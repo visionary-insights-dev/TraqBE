@@ -5,6 +5,7 @@ import { NotificationsQueueModule } from './queues/notifications.queue.js';
 import { ReportsQueueModule } from './queues/reports.queue.js';
 import { AnalyticsQueueModule } from './queues/analytics.queue.js';
 import { BulkImportQueueModule } from './queues/bulk-import.queue.js';
+import { NotificationsModule } from '../modules/notifications/notifications.module.js';
 import { EmailProcessor } from './processors/email.processor.js';
 import { AssignmentReminderProcessor } from './processors/assignment-reminder.processor.js';
 import { OverdueAssignmentProcessor } from './processors/overdue-assignment.processor.js';
@@ -20,6 +21,7 @@ import { BulkImportProcessor } from './processors/bulk-import.processor.js';
     ReportsQueueModule,
     AnalyticsQueueModule,
     BulkImportQueueModule,
+    NotificationsModule,
   ],
   providers: [
     EmailProcessor,

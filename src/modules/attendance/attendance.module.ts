@@ -4,7 +4,7 @@ import { AttendanceService } from './attendance.service.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { MeetingsModule } from '../meetings/meetings.module.js';
 import { AnalyticsModule } from '../analytics/analytics.module.js';
-import { EmailQueueModule } from '../../jobs/queues/email.queue.js';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 import { AnalyticsQueueModule } from '../../jobs/queues/analytics.queue.js';
 
 @Module({
@@ -12,7 +12,7 @@ import { AnalyticsQueueModule } from '../../jobs/queues/analytics.queue.js';
     AuditModule,
     MeetingsModule,
     AnalyticsModule,
-    EmailQueueModule,
+    NotificationsModule,
     AnalyticsQueueModule,
   ],
   controllers: [AttendanceController],

@@ -66,6 +66,10 @@ export const PERMISSION_ROLES: Record<string, Role[]> = {
   'attendance.create': [Role.SUPER_ADMIN, Role.MENTOR],
   'attendance.correct': [Role.SUPER_ADMIN],
 
+  // Notifications — self-service, any authenticated user
+  'notifications.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+  'notifications.update': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+
   // Resources
   'resources.upload': [Role.SUPER_ADMIN, Role.MENTOR],
   'resources.create': [Role.SUPER_ADMIN, Role.MENTOR],

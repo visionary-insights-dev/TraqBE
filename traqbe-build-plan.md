@@ -935,7 +935,7 @@ Update PROGRESS.md, commit, push.
 | 5 | Assignments | api-builder, job-worker, tester | ✅ Done |
 | 6 | Meetings & Attendance | api-builder, tester | ✅ Done |
 | 7 | Resources | api-builder, tester | ✅ Done |
-| 8 | Notifications & WebSocket | api-builder, job-worker, tester | — |
+| 8 | Notifications & WebSocket | api-builder, job-worker, tester | ✅ Done |
 | 9 | Analytics & Reports | api-builder, job-worker, tester | — |
 | 10 | Audit Log | api-builder, tester | — |
 | 11 | Invitations | api-builder, job-worker, tester | — |

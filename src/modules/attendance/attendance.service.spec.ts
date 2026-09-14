@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { AttendanceStatus } from '@prisma/client';
+import { AttendanceStatus, NotificationChannel } from '@prisma/client';
 import { AnalyticsService } from '../analytics/analytics.service.js';
 import { AttendanceService } from './attendance.service.js';
 
@@ -61,9 +61,8 @@ describe('AttendanceService', () => {
   let audit: { log: ReturnType<typeof vi.fn> };
   let meetingsService: { getMeeting: ReturnType<typeof vi.fn> };
   let analyticsService: { calculateAttendanceRate: ReturnType<typeof vi.fn> };
-  let emailQueue: { add: ReturnType<typeof vi.fn> };
+  let notifications: { create: ReturnType<typeof vi.fn> };
   let analyticsQueue: { add: ReturnType<typeof vi.fn> };
-  let tx: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -83,20 +82,7 @@ describe('AttendanceService', () => {
       auditLog: {
         findMany: vi.fn(),
       },
-      $transaction: vi.fn(),
     };
-
-    tx = {
-      notification: {
-        create: vi.fn().mockResolvedValue({ id: 'notif-1' }),
-      },
-      notificationDelivery: {
-        create: vi.fn().mockResolvedValue({ id: 'deliv-1' }),
-      },
-    };
-    prisma.$transaction.mockImplementation(async (cb: (t: unknown) => Promise<unknown>) =>
-      cb(tx),
-    );
 
     audit = {
       log: vi.fn().mockResolvedValue(undefined),
@@ -110,8 +96,8 @@ describe('AttendanceService', () => {
       calculateAttendanceRate: vi.fn().mockReturnValue(88.89),
     };
 
-    emailQueue = {
-      add: vi.fn().mockResolvedValue(undefined),
+    notifications = {
+      create: vi.fn().mockResolvedValue({ id: 'notif-1' }),
     };
 
     analyticsQueue = {
@@ -123,7 +109,7 @@ describe('AttendanceService', () => {
       audit as any,
       meetingsService as any,
       analyticsService as any,
-      emailQueue as any,
+      notifications as any,
       analyticsQueue as any,
     );
   });
@@ -282,31 +268,16 @@ describe('AttendanceService', () => {
         records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.ABSENT }],
       }, ACTOR_ID);
 
-      expect(prisma.$transaction).toHaveBeenCalled();
-      expect(tx.notification.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            organization_id: ORG_A,
-            type: 'attendance_absent',
-            metadata: expect.objectContaining({ meetingId: MEETING_ID, scholarId: SCHOLAR_1 }),
-          }),
-        }),
-      );
-      expect(tx.notificationDelivery.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            notification_id: 'notif-1',
-            user_id: SCHOLAR_1,
-            channel: 'IN_APP',
-            status: 'PENDING',
-          }),
-        }),
-      );
-      expect(emailQueue.add).toHaveBeenCalledWith(
+      // Notification goes through NotificationsService (never inline in a tx).
+      expect(notifications.create).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: ORG_A,
+          userId: SCHOLAR_1,
           to: 's1@example.com',
-          subject: 'Attendance marked absent',
+          type: 'attendance_absent',
+          channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+          templateId: 'attendance_absent',
+          metadata: expect.objectContaining({ meetingId: MEETING_ID, scholarId: SCHOLAR_1 }),
         }),
       );
     });
@@ -321,8 +292,7 @@ describe('AttendanceService', () => {
         records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT }],
       }, ACTOR_ID);
 
-      expect(prisma.$transaction).not.toHaveBeenCalled();
-      expect(emailQueue.add).not.toHaveBeenCalled();
+      expect(notifications.create).not.toHaveBeenCalled();
     });
   });
 
