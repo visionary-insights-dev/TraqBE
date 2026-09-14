@@ -54,6 +54,17 @@ export const PERMISSION_ROLES: Record<string, Role[]> = {
   'assignments.verify': [Role.SUPER_ADMIN, Role.MENTOR],
   'assignments.request_change': [Role.MENTOR],
   'assignments.approve_change': [Role.SUPER_ADMIN],
+
+  // Meetings
+  'meetings.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+  'meetings.create': [Role.SUPER_ADMIN, Role.MENTOR],
+  'meetings.update': [Role.SUPER_ADMIN, Role.MENTOR],
+  'meetings.archive': [Role.SUPER_ADMIN],
+
+  // Attendance
+  'attendance.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+  'attendance.create': [Role.SUPER_ADMIN, Role.MENTOR],
+  'attendance.correct': [Role.SUPER_ADMIN],
 };
 
 /**

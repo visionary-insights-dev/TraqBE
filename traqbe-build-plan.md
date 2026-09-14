@@ -928,12 +928,12 @@ Update PROGRESS.md, commit, push.
 | Phase | Module | Agent(s) | Blocks |
 |---|---|---|---|
 | 0 | Foundation | — | ✅ Done |
-| 1 | Auth & Security | api-builder, tester | Everything |
-| 2 | Org & Users | api-builder, tester | Phase 3, 4 |
-| 3 | Programs & Courses | api-builder, tester | Phase 4, 5 |
-| 4 | Mentor Pairing | api-builder, tester | Phase 5, 6 |
-| 5 | Assignments | api-builder, job-worker, tester | Phase 9 |
-| 6 | Meetings & Attendance | api-builder, tester | Phase 9 |
+| 1 | Auth & Security | api-builder, tester | ✅ Done |
+| 2 | Org & Users | api-builder, tester | ✅ Done |
+| 3 | Programs & Courses | api-builder, tester | ✅ Done |
+| 4 | Mentor Pairing | api-builder, tester | ✅ Done |
+| 5 | Assignments | api-builder, job-worker, tester | ✅ Done |
+| 6 | Meetings & Attendance | api-builder, tester | ✅ Done |
 | 7 | Resources | api-builder, tester | — |
 | 8 | Notifications & WebSocket | api-builder, job-worker, tester | — |
 | 9 | Analytics & Reports | api-builder, job-worker, tester | — |
