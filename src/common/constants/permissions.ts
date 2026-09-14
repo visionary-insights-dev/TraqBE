@@ -65,6 +65,12 @@ export const PERMISSION_ROLES: Record<string, Role[]> = {
   'attendance.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
   'attendance.create': [Role.SUPER_ADMIN, Role.MENTOR],
   'attendance.correct': [Role.SUPER_ADMIN],
+
+  // Resources
+  'resources.upload': [Role.SUPER_ADMIN, Role.MENTOR],
+  'resources.create': [Role.SUPER_ADMIN, Role.MENTOR],
+  'resources.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+  'resources.delete': [Role.SUPER_ADMIN],
 };
 
 /**

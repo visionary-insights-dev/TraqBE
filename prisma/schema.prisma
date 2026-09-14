@@ -249,6 +249,7 @@ model Course {
   course_memberships CourseMembership[]
   assignments        Assignment[]
   meetings           Meeting[]
+  resources          Resource[]
   mentor_scholar_assignments MentorScholarAssignment[]
 
   @@index([organization_id])
@@ -315,20 +316,26 @@ model MentorScholarAssignment {
 model Resource {
   id              String    @id @default(uuid()) @db.Uuid
   organization_id String    @db.Uuid
+  course_id       String?   @db.Uuid
   object_key      String
   file_name       String
+  description     String?
   mime_type       String
   size_bytes      Int
   uploader_id     String    @db.Uuid
   created_at      DateTime  @default(now()) @db.Timestamptz
   updated_at      DateTime  @updatedAt @db.Timestamptz
+  archived_at     DateTime? @db.Timestamptz
 
   organization         Organization         @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  course               Course?              @relation(fields: [course_id], references: [id], onDelete: Restrict)
   uploader             User                 @relation(fields: [uploader_id], references: [id], onDelete: Restrict)
   assignment_resources AssignmentResource[]
 
   @@index([organization_id])
+  @@index([course_id])
   @@index([uploader_id])
+  @@index([archived_at])
   @@map("resources")
 }
 
