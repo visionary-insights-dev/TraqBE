@@ -434,7 +434,11 @@ describe('AttendanceService', () => {
   // Attendance rate (AnalyticsService.calculateAttendanceRate — REAL impl)
   // =========================================================================
   describe('calculateAttendanceRate (AnalyticsService)', () => {
-    const realAnalytics = new AnalyticsService();
+    const realAnalytics = new AnalyticsService(
+      undefined as any,
+      undefined as any,
+      undefined as any,
+    );
 
     it('excludes EXCUSED sessions — 8 PRESENT, 1 ABSENT, 1 EXCUSED = 88.9 (release-blocking)', () => {
       const records = [

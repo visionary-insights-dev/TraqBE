@@ -75,6 +75,16 @@ export const PERMISSION_ROLES: Record<string, Role[]> = {
   'resources.create': [Role.SUPER_ADMIN, Role.MENTOR],
   'resources.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
   'resources.delete': [Role.SUPER_ADMIN],
+
+  // Analytics
+  'analytics.read': [Role.SUPER_ADMIN, Role.MENTOR, Role.SCHOLAR],
+
+  // Reports
+  'reports.generate': [Role.SUPER_ADMIN],
+  'reports.read': [Role.SUPER_ADMIN],
+
+  // Audit — SUPER_ADMIN only per spec
+  'audit.read': [Role.SUPER_ADMIN],
 };
 
 /**

@@ -567,6 +567,10 @@ model ReportExport {
   parameters      Json?
   status          ReportStatus @default(PENDING)
   file_url        String?
+  r2_key          String?
+  format          String       @default("csv")
+  completed_at    DateTime?    @db.Timestamptz
+  expires_at      DateTime?    @db.Timestamptz
   requested_by    String       @db.Uuid
   created_at      DateTime     @default(now()) @db.Timestamptz
   updated_at      DateTime     @updatedAt @db.Timestamptz
@@ -575,6 +579,7 @@ model ReportExport {
   requestedBy  User         @relation(fields: [requested_by], references: [id], onDelete: Restrict)
 
   @@index([organization_id])
+  @@index([organization_id, status])
   @@index([status])
   @@index([requested_by])
   @@map("report_exports")
@@ -590,6 +595,8 @@ model AuditLog {
   action          String
   entity_type     String
   entity_id       String
+  previous_state  Json?
+  new_state       Json?
   metadata        Json?
   ip_address      String?
   created_at      DateTime  @default(now()) @db.Timestamptz
@@ -602,6 +609,7 @@ model AuditLog {
   @@index([entity_type, entity_id])
   @@index([action])
   @@index([created_at])
+  @@index([organization_id, created_at])
   @@map("audit_logs")
 }
 

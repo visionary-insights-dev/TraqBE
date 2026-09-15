@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AuthService, REFRESH_COOKIE_NAME } from './auth.service.js';
+import { AuditService } from '../audit/audit.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -207,6 +208,7 @@ describe('AuthService', () => {
   };
   let configService: { get: ReturnType<typeof vi.fn> };
   let emailQueue: { add: ReturnType<typeof vi.fn> };
+  let auditService: { log: ReturnType<typeof vi.fn>; recent: ReturnType<typeof vi.fn> };
   let response: Response;
 
   beforeEach(() => {
@@ -253,6 +255,7 @@ describe('AuthService', () => {
     };
 
     emailQueue = { add: vi.fn().mockResolvedValue({}) };
+    auditService = { log: vi.fn().mockResolvedValue(undefined), recent: vi.fn() };
     response = createMockResponse();
 
     // Default crypto mocks
@@ -273,6 +276,7 @@ describe('AuthService', () => {
       jwtService as unknown as JwtService,
       configService as unknown as ConfigService,
       emailQueue as unknown as Queue,
+      auditService as unknown as AuditService,
     );
   });
 
@@ -311,6 +315,17 @@ describe('AuthService', () => {
       expect(prisma.refreshToken.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ user_id: USER_ID }),
+        }),
+      );
+
+      // Audit entry logged after successful login
+      expect(auditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: ORG_ID,
+          actorId: USER_ID,
+          action: 'AUTH_LOGIN',
+          entityType: 'AUTH',
+          entityId: USER_ID,
         }),
       );
     });
@@ -702,6 +717,7 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValue(makeUser());
       vi.mocked(argon2.hash).mockResolvedValue('new-pw-hash' as never);
       prisma.$transaction.mockResolvedValue([{}, {}]);
+      prisma.userRole.findFirst.mockResolvedValue(makeUserRole());
 
       await service.resetPassword(RESET_TOKEN, 'newpassword123');
 
@@ -713,6 +729,17 @@ describe('AuthService', () => {
       // Verify the transaction includes password update + token revocation
       const txArg = prisma.$transaction.mock.calls[0][0] as unknown[];
       expect(txArg).toHaveLength(2);
+
+      // Audit entry logged after the reset (org from active role)
+      expect(auditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: ORG_ID,
+          actorId: USER_ID,
+          action: 'PASSWORD_RESET',
+          entityType: 'USER',
+          entityId: USER_ID,
+        }),
+      );
     });
 
     // -----------------------------------------------------------------
@@ -972,6 +999,17 @@ describe('AuthService', () => {
         REFRESH_COOKIE_NAME,
         expect.any(String),
         expect.objectContaining({ httpOnly: true }),
+      );
+
+      // Audit entry logged after account creation
+      expect(auditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: ORG_ID,
+          actorId: createdUser.id,
+          action: 'USER_REGISTERED',
+          entityType: 'USER',
+          entityId: createdUser.id,
+        }),
       );
     });
 

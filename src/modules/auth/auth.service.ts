@@ -16,6 +16,7 @@ import { Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { EMAIL_QUEUE } from '../../jobs/queues/email.queue.js';
 import type { EmailDispatchJobData } from '../../jobs/queues/email.queue.js';
+import { AuditService } from '../audit/audit.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 
 // ---------------------------------------------------------------------------
@@ -57,6 +58,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailDispatchJobData>,
+    private readonly audit: AuditService,
   ) {}
 
   // =========================================================================
@@ -103,6 +105,14 @@ export class AuthService {
     const tokens = await this.generateTokens(tokenUser);
 
     this.setRefreshCookie(response, tokens.refreshToken);
+
+    await this.audit.log({
+      organizationId: userRole.organization_id,
+      actorId: user.id,
+      action: 'AUTH_LOGIN',
+      entityType: 'AUTH',
+      entityId: user.id,
+    });
 
     return {
       user: {
@@ -287,6 +297,21 @@ export class AuthService {
         data: { revoked_at: new Date() },
       }),
     ]);
+
+    // Audit after commit — org context comes from the user's active role.
+    const userRole = await this.prisma.userRole.findFirst({
+      where: { user_id: user.id },
+      orderBy: { created_at: 'asc' },
+    });
+    if (userRole) {
+      await this.audit.log({
+        organizationId: userRole.organization_id,
+        actorId: user.id,
+        action: 'PASSWORD_RESET',
+        entityType: 'USER',
+        entityId: user.id,
+      });
+    }
   }
 
   // =========================================================================
@@ -422,6 +447,14 @@ export class AuthService {
 
     const tokens = await this.generateTokens(tokenUser);
     this.setRefreshCookie(response, tokens.refreshToken);
+
+    await this.audit.log({
+      organizationId: invitation.organization_id,
+      actorId: user.id,
+      action: 'USER_REGISTERED',
+      entityType: 'USER',
+      entityId: user.id,
+    });
 
     return {
       user: {

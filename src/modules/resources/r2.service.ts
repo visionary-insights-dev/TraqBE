@@ -67,8 +67,30 @@ export class R2Service {
     );
   }
 
+/**
+   * Upload a buffer directly to R2 (server-side, no presigning).
+   * Used by background jobs that generate files server-side (e.g. report CSVs).
+   */
+  async putObject(objectKey: string, body: Buffer, contentType: string): Promise<void> {
+    if (!this.configured) {
+      throw new ServiceUnavailableException({
+        code: 'R2_NOT_CONFIGURED',
+        message: 'File storage is not configured. Please contact your administrator.',
+      });
+    }
+
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: objectKey,
+        Body: body,
+        ContentType: contentType,
+      }),
+    );
+  }
+
   /**
-   * Generate a presigned GET URL for downloading a file from R2.
+   * Get a signed GET URL for downloading a file from R2.
    * Valid for 1 hour (3600 seconds).
    */
   async getDownloadUrl(objectKey: string): Promise<string> {
