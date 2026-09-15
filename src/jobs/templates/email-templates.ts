@@ -14,6 +14,10 @@ const TEMPLATES: Record<string, (v: Record<string, string | number>) => string> 
     `<p>Your assignment <strong>"${v['title'] ?? 'Untitled'}"</strong> is now <strong>overdue</strong>.</p><p>Please submit as soon as possible.</p>`,
   report_ready: (v) =>
     `<p>Your <strong>${v['reportType'] ?? 'report'}</strong> report (${v['rowCount'] ?? 0} rows) is ready to download.</p><p>Open the <strong>Reports</strong> page in Traq to download the CSV. The download link expires in 7 days.</p>`,
+  invitation_reminder_24h: (v) =>
+    `<p>This is a reminder that your invitation to join Traq expires in <strong>24 hours</strong> (${v['expiryDate'] ?? 'soon'}).</p><p>Click the link in your original invitation email to accept before it expires.</p>`,
+  invitation_reminder_expiry: (v) =>
+    `<p>Your invitation to join Traq expires in <strong>4 hours</strong> (${v['expiryDate'] ?? 'soon'}).</p><p>Please accept soon — you will need a new invitation if it expires.</p>`,
 };
 
 export function renderTemplate(

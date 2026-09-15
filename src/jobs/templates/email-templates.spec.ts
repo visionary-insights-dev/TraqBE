@@ -34,6 +34,22 @@ describe('renderTemplate', () => {
     expect(result).toContain('overdue');
   });
 
+  it('renders invitation_reminder_24h with expiryDate', () => {
+    const result = renderTemplate('invitation_reminder_24h', {
+      expiryDate: '2026-09-20T00:00:00.000Z',
+    });
+    expect(result).toContain('24 hours');
+    expect(result).toContain('2026-09-20T00:00:00.000Z');
+  });
+
+  it('renders invitation_reminder_expiry with expiryDate', () => {
+    const result = renderTemplate('invitation_reminder_expiry', {
+      expiryDate: '2026-09-20T00:00:00.000Z',
+    });
+    expect(result).toContain('4 hours');
+    expect(result).toContain('2026-09-20T00:00:00.000Z');
+  });
+
   it('throws Error for unknown template id', () => {
     expect(() => renderTemplate('nope', {})).toThrow(
       'Unknown email template: nope',

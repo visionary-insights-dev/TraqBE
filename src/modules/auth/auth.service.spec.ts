@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AuthService, REFRESH_COOKIE_NAME } from './auth.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { InvitationsService } from '../invitations/invitations.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -209,6 +210,7 @@ describe('AuthService', () => {
   let configService: { get: ReturnType<typeof vi.fn> };
   let emailQueue: { add: ReturnType<typeof vi.fn> };
   let auditService: { log: ReturnType<typeof vi.fn>; recent: ReturnType<typeof vi.fn> };
+  let invitationsService: { scheduleReminders: ReturnType<typeof vi.fn> };
   let response: Response;
 
   beforeEach(() => {
@@ -256,6 +258,7 @@ describe('AuthService', () => {
 
     emailQueue = { add: vi.fn().mockResolvedValue({}) };
     auditService = { log: vi.fn().mockResolvedValue(undefined), recent: vi.fn() };
+    invitationsService = { scheduleReminders: vi.fn().mockResolvedValue(undefined) };
     response = createMockResponse();
 
     // Default crypto mocks
@@ -277,6 +280,7 @@ describe('AuthService', () => {
       configService as unknown as ConfigService,
       emailQueue as unknown as Queue,
       auditService as unknown as AuditService,
+      invitationsService as unknown as InvitationsService,
     );
   });
 

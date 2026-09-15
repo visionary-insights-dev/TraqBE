@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { UserManagementService } from './users.service.js';
+import { InvitationsService } from '../invitations/invitations.service.js';
 
 // ---------------------------------------------------------------------------
 // Module-level mocks
@@ -114,6 +115,7 @@ describe('UserManagementService', () => {
   let audit: { log: ReturnType<typeof vi.fn> };
   let emailQueue: { add: ReturnType<typeof vi.fn> };
   let bulkImportQueue: { add: ReturnType<typeof vi.fn> };
+  let invitationsService: { scheduleReminders: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -145,6 +147,7 @@ describe('UserManagementService', () => {
     audit = { log: vi.fn().mockResolvedValue(undefined) };
     emailQueue = { add: vi.fn().mockResolvedValue({}) };
     bulkImportQueue = { add: vi.fn().mockResolvedValue({ id: 'job-1' }) };
+    invitationsService = { scheduleReminders: vi.fn().mockResolvedValue(undefined) };
 
     // Default crypto mocks
     (crypto.randomBytes as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -160,6 +163,7 @@ describe('UserManagementService', () => {
       audit as any,
       emailQueue as any,
       bulkImportQueue as any,
+      invitationsService as any,
     );
   });
 

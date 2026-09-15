@@ -17,6 +17,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { EMAIL_QUEUE } from '../../jobs/queues/email.queue.js';
 import type { EmailDispatchJobData } from '../../jobs/queues/email.queue.js';
 import { AuditService } from '../audit/audit.service.js';
+import { InvitationsService } from '../invitations/invitations.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 
 // ---------------------------------------------------------------------------
@@ -59,6 +60,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailDispatchJobData>,
     private readonly audit: AuditService,
+    private readonly invitations: InvitationsService,
   ) {}
 
   // =========================================================================
@@ -341,7 +343,7 @@ export class AuthService {
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = this.hashToken(rawToken);
 
-    await this.prisma.invitation.create({
+    const invitation = await this.prisma.invitation.create({
       data: {
         organization_id: organizationId,
         email: normalized,
@@ -360,6 +362,9 @@ export class AuthService {
       subject: 'You have been invited to Traq',
       html: `You have been invited${invitedByName ? ` by ${invitedByName}` : ''} to join Traq. Click <a href="${invitationLink}">here</a> to accept your invitation. This link expires in 48 hours.`,
     });
+
+    // Schedule reminder jobs (24h after send and 4h before expiry)
+    await this.invitations.scheduleReminders(organizationId, invitation.id, invitation.expires_at);
 
     return { invitationLink };
   }

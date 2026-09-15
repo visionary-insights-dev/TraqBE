@@ -85,6 +85,11 @@ export const PERMISSION_ROLES: Record<string, Role[]> = {
 
   // Audit — SUPER_ADMIN only per spec
   'audit.read': [Role.SUPER_ADMIN],
+
+  // Invitations — SUPER_ADMIN only per spec
+  'invitations.read': [Role.SUPER_ADMIN],
+  'invitations.resend': [Role.SUPER_ADMIN],
+  'invitations.revoke': [Role.SUPER_ADMIN],
 };
 
 /**

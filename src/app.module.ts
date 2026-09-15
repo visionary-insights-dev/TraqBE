@@ -21,6 +21,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
+import { InvitationsModule } from './modules/invitations/invitations.module.js';
 import { JobsModule } from './modules/jobs/jobs.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 
@@ -53,6 +54,7 @@ import { HealthModule } from './modules/health/health.module.js';
     AnalyticsModule,
     ReportsModule,
     AuditModule,
+    InvitationsModule,
     JobsModule,
     HealthModule,
   ],

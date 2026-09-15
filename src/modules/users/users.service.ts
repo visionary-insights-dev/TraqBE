@@ -10,6 +10,7 @@ import { parse } from 'csv-parse/sync';
 import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { InvitationsService } from '../invitations/invitations.service.js';
 import { EmailDispatchJobData, EMAIL_QUEUE } from '../../jobs/queues/email.queue.js';
 import { BULK_IMPORT_QUEUE, BulkImportJobData } from '../../jobs/queues/bulk-import.queue.js';
 import { InviteUserDto } from './dto/invite-user.dto.js';
@@ -30,6 +31,7 @@ export class UserManagementService {
     private readonly audit: AuditService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailDispatchJobData>,
     @InjectQueue(BULK_IMPORT_QUEUE) private readonly bulkImportQueue: Queue<BulkImportJobData>,
+    private readonly invitations: InvitationsService,
   ) {}
 
   // =========================================================================
@@ -280,6 +282,9 @@ export class UserManagementService {
       html: `You have been invited to join Traq. Click <a href="${invitationLink}">here</a> to accept. This link expires in 48 hours.`,
     });
 
+    // Schedule reminder jobs (24h after send and 4h before expiry)
+    await this.invitations.scheduleReminders(organizationId, invitation.id, invitation.expires_at);
+
     await this.audit.log({
       organizationId,
       actorId,
@@ -465,7 +470,7 @@ export class UserManagementService {
         const rawToken = crypto.randomBytes(32).toString('hex');
         const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
-        await this.prisma.invitation.create({
+        const invitation = await this.prisma.invitation.create({
           data: {
             organization_id: organizationId,
             email,
@@ -482,6 +487,9 @@ export class UserManagementService {
           subject: 'You have been invited to Traq',
           html: `Hi${row.name ? ` ${row.name}` : ''}, you have been invited to join Traq. Click <a href="${invitationLink}">here</a> to accept. This link expires in 48 hours.`,
         });
+
+        // Auto-schedule the 24h + 4h-before-expiry reminder jobs
+        await this.invitations.scheduleReminders(organizationId, invitation.id, invitation.expires_at);
 
         created++;
       } catch (err) {
