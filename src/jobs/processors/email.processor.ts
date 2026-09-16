@@ -11,12 +11,22 @@ import { renderTemplate } from '../templates/email-templates.js';
 export class EmailProcessor {
   private readonly logger = new Logger(EmailProcessor.name);
   private readonly resend: Resend;
+  private readonly configured: boolean;
 
   constructor(
     private readonly prisma: PrismaService,
     config: ConfigService,
   ) {
-    this.resend = new Resend(config.get<string>('RESEND_API_KEY'));
+    const apiKey = config.get<string>('RESEND_API_KEY');
+    this.configured = Boolean(apiKey);
+
+    if (!this.configured) {
+      this.logger.warn(
+        'RESEND_API_KEY is not set. Email deliveries will be skipped (retried) until it is configured.',
+      );
+    }
+
+    this.resend = new Resend(apiKey ?? 'resend-not-configured');
   }
 
   @Process()
@@ -49,6 +59,12 @@ export class EmailProcessor {
     }
 
     // 3. Send via Resend.
+    if (!this.configured) {
+      // No key → never falsely mark SENT. Throwing lets BullMQ retry so the
+      // job self-heals once RESEND_API_KEY is configured.
+      throw new Error('RESEND_API_KEY not configured; email delivery skipped');
+    }
+
     const { error } = await this.resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL ?? 'Traq <no-reply@traq.app>',
       to,

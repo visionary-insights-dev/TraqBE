@@ -32,6 +32,22 @@ describe('EmailProcessor', () => {
     delete process.env.RESEND_FROM_EMAIL;
   });
 
+  it('constructs without an API key (no boot crash) and skips send until configured', async () => {
+    const noKeyConfig = {
+      get: vi.fn(() => undefined),
+    };
+    expect(() => new EmailProcessor(prisma as any, noKeyConfig as any)).not.toThrow();
+
+    const unconfigured = new EmailProcessor(prisma as any, noKeyConfig as any);
+    prisma.notificationDelivery.findFirst.mockResolvedValue(null);
+
+    await expect(
+      unconfigured.handleEmail(makeJob({ notificationId: 'notif-1' })),
+    ).rejects.toThrow('RESEND_API_KEY not configured; email delivery skipped');
+
+    expect(prisma.notificationDelivery.updateMany).not.toHaveBeenCalled();
+  });
+
   // ---------------------------------------------------------------------------
   // Helper
   // ---------------------------------------------------------------------------
