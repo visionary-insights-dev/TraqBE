@@ -7,13 +7,15 @@ import {
   Req,
   Res,
   UseGuards,
-  ForbiddenException,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
+import { PermissionsGuard } from '../../common/guards/permissions.guard.js';
+import { permissionRoles } from '../../common/constants/permissions.js';
 import type { AuthUser } from '../../common/types/auth-user.types.js';
 import { AuthService, REFRESH_COOKIE_NAME } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -22,7 +24,6 @@ import { VerifyOtpDto } from './dto/verify-otp.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { CreateInvitationDto } from './dto/create-invitation.dto.js';
-import { Role } from '@prisma/client';
 
 @Controller('api/v1/auth')
 @ApiTags('Auth')
@@ -90,15 +91,13 @@ export class AuthController {
   }
 
   @Post('invitations')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission(...permissionRoles('users.invite'))
   @ApiOperation({ summary: 'Create an organization invite (admin)' })
   @ApiResponse({ status: 201, description: 'Invitation created' })
   @ApiResponse({ status: 401, description: 'Authorization required' })
   @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   async createInvitation(@CurrentUser() user: AuthUser, @Body() dto: CreateInvitationDto) {
-    if (!user.roles.includes(Role.SUPER_ADMIN)) {
-      throw new ForbiddenException({ code: 'INSUFFICIENT_PERMISSIONS', message: 'Only admins can invite users' });
-    }
     const result = await this.authService.createInvitation(user.organizationId, dto.email, dto.role, user.email);
     return result;
   }

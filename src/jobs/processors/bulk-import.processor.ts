@@ -7,6 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { EmailDispatchJobData, EMAIL_QUEUE } from '../queues/email.queue.js';
 import { BULK_IMPORT_QUEUE } from '../queues/bulk-import.queue.js';
 import type { BulkImportJobData } from '../queues/bulk-import.queue.js';
+import { InvitationsService } from '../../modules/invitations/invitations.service.js';
 
 @Processor(BULK_IMPORT_QUEUE)
 export class BulkImportProcessor {
@@ -15,6 +16,7 @@ export class BulkImportProcessor {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailDispatchJobData>,
+    private readonly invitations: InvitationsService,
   ) {}
 
   @Process()
@@ -68,6 +70,9 @@ export class BulkImportProcessor {
         subject: 'You have been invited to Traq',
         html: `Hi${row.name ? ` ${row.name}` : ''}, you have been invited to join Traq. Click <a href="${invitationLink}">here</a> to accept. This link expires in ${invitationExpiryHours} hours.`,
       });
+
+      // Schedule reminder jobs (24h after send and 4h before expiry)
+      await this.invitations.scheduleReminders(organizationId, invitation.id, invitation.expires_at);
 
       created++;
       // Keep a reference to the invitation id for reporting (avoid unused var lint)

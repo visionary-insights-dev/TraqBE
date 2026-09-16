@@ -3,6 +3,7 @@ import { AssignmentsController } from './assignments.controller.js';
 import { AssignmentsService } from './assignments.service.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { OrganizationsModule } from '../organizations/organizations.module.js';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 import { EmailQueueModule } from '../../jobs/queues/email.queue.js';
 import { AssignmentsQueueModule } from '../../jobs/queues/assignments.queue.js';
 import { AnalyticsQueueModule } from '../../jobs/queues/analytics.queue.js';
@@ -11,6 +12,7 @@ import { AnalyticsQueueModule } from '../../jobs/queues/analytics.queue.js';
   imports: [
     AuditModule,
     OrganizationsModule,
+    NotificationsModule,
     EmailQueueModule,
     AssignmentsQueueModule,
     AnalyticsQueueModule,

@@ -42,6 +42,8 @@ describe('OrganizationsService', () => {
     service = new OrganizationsService(
       prisma as any,
       audit as any,
+      { add: vi.fn().mockResolvedValue({ id: 'job-1' }) } as any,
+      { emitDashboardAnalyticsUpdated: vi.fn() } as any,
     );
   });
 

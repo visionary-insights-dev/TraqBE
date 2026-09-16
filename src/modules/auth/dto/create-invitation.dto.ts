@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsString } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
 import { Role } from '@prisma/client';
 
 export class CreateInvitationDto {
@@ -12,6 +12,7 @@ export class CreateInvitationDto {
   role: Role;
 
   @ApiPropertyOptional({ description: 'Optional name hint shown to invitee', example: 'Jane Doe' })
+  @IsOptional()
   @IsString()
   name?: string;
 }

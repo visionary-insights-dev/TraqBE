@@ -1,14 +1,10 @@
 import { InjectQueue, Process, Processor } from '@nestjs/bull';
-import {
-  DeliveryStatus,
-  NotificationChannel,
-  ScholarAssignmentStatus,
-} from '@prisma/client';
+import { NotificationChannel, ScholarAssignmentStatus } from '@prisma/client';
 import { Logger, OnModuleInit } from '@nestjs/common';
 import type { Job, Queue } from 'bull';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { NotificationsService } from '../../modules/notifications/notifications.service.js';
 import { ASSIGNMENTS_QUEUE } from '../queues/assignments.queue.js';
-import { EMAIL_QUEUE, type EmailDispatchJobData } from '../queues/email.queue.js';
 
 export interface OverdueCheckJobData {
   organizationId?: string; // Optional: check specific org or all
@@ -26,7 +22,7 @@ export class OverdueAssignmentProcessor implements OnModuleInit {
 
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailDispatchJobData>,
+    private readonly notifications: NotificationsService,
     @InjectQueue(ASSIGNMENTS_QUEUE)
     private readonly assignmentsQueue: Queue<OverdueCheckJobData>,
   ) {}
@@ -107,41 +103,21 @@ export class OverdueAssignmentProcessor implements OnModuleInit {
       const emailById = new Map(scholars.map((s) => [s.id, s.email]));
 
       for (const candidate of overdueCandidates) {
-        await this.prisma.$transaction(async (tx) => {
-          const notification = await tx.notification.create({
-            data: {
-              organization_id: candidate.organization_id,
-              title: 'Assignment overdue',
-              body: `Assignment "${candidate.assignment.title}" is overdue. Please submit as soon as possible.`,
-              type: 'assignment_overdue',
-              metadata: {
-                scholarAssignmentId: candidate.id,
-                assignmentId: candidate.assignment_id,
-              },
-            },
-          });
-
-          await tx.notificationDelivery.create({
-            data: {
-              notification_id: notification.id,
-              user_id: candidate.scholar_id,
-              channel: NotificationChannel.IN_APP,
-              status: DeliveryStatus.PENDING,
-            },
-          });
+        await this.notifications.create({
+          organizationId: candidate.organization_id,
+          userId: candidate.scholar_id,
+          to: emailById.get(candidate.scholar_id),
+          type: 'assignment_overdue',
+          title: 'Assignment overdue',
+          body: `Assignment "${candidate.assignment.title}" is overdue. Please submit as soon as possible.`,
+          metadata: {
+            scholarAssignmentId: candidate.id,
+            assignmentId: candidate.assignment_id,
+          },
+          channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+          templateId: 'assignment_overdue',
+          variables: { title: candidate.assignment.title },
         });
-
-        const email = emailById.get(candidate.scholar_id);
-        if (email) {
-          await this.emailQueue.add({
-            organizationId: candidate.organization_id,
-            to: email,
-            subject: 'Assignment overdue',
-            html: `Assignment "<strong>${candidate.assignment.title}</strong>" was due on ${
-              candidate.assignment.due_at?.toISOString() ?? 'the scheduled date'
-            }. Please submit as soon as possible.`,
-          });
-        }
       }
 
       this.logger.log(

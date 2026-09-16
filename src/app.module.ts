@@ -8,20 +8,16 @@ import { UserManagementModule } from './modules/users/users.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { ProgramsModule } from './modules/programs/programs.module.js';
 import { CoursesModule } from './modules/courses/courses.module.js';
-import { MembershipsModule } from './modules/memberships/memberships.module.js';
-import { RolesModule } from './modules/roles/roles.module.js';
-import { PermissionsModule } from './modules/permissions/permissions.module.js';
 import { MentorPairingModule } from './modules/mentor-pairing/mentor-pairing.module.js';
 import { ResourcesModule } from './modules/resources/resources.module.js';
 import { AssignmentsModule } from './modules/assignments/assignments.module.js';
-import { AssignmentSubmissionsModule } from './modules/assignment-submissions/assignment-submissions.module.js';
 import { MeetingsModule } from './modules/meetings/meetings.module.js';
 import { AttendanceModule } from './modules/attendance/attendance.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
-import { UploadsModule } from './modules/uploads/uploads.module.js';
+import { InvitationsModule } from './modules/invitations/invitations.module.js';
 import { JobsModule } from './modules/jobs/jobs.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 
@@ -41,20 +37,16 @@ import { HealthModule } from './modules/health/health.module.js';
     OrganizationsModule,
     ProgramsModule,
     CoursesModule,
-    MembershipsModule,
-    RolesModule,
-    PermissionsModule,
     MentorPairingModule,
     ResourcesModule,
     AssignmentsModule,
-    AssignmentSubmissionsModule,
     MeetingsModule,
     AttendanceModule,
     NotificationsModule,
     AnalyticsModule,
     ReportsModule,
     AuditModule,
-    UploadsModule,
+    InvitationsModule,
     JobsModule,
     HealthModule,
   ],

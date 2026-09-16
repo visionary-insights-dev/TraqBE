@@ -249,6 +249,7 @@ model Course {
   course_memberships CourseMembership[]
   assignments        Assignment[]
   meetings           Meeting[]
+  resources          Resource[]
   mentor_scholar_assignments MentorScholarAssignment[]
 
   @@index([organization_id])
@@ -315,20 +316,26 @@ model MentorScholarAssignment {
 model Resource {
   id              String    @id @default(uuid()) @db.Uuid
   organization_id String    @db.Uuid
+  course_id       String?   @db.Uuid
   object_key      String
   file_name       String
+  description     String?
   mime_type       String
   size_bytes      Int
   uploader_id     String    @db.Uuid
   created_at      DateTime  @default(now()) @db.Timestamptz
   updated_at      DateTime  @updatedAt @db.Timestamptz
+  archived_at     DateTime? @db.Timestamptz
 
   organization         Organization         @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  course               Course?              @relation(fields: [course_id], references: [id], onDelete: Restrict)
   uploader             User                 @relation(fields: [uploader_id], references: [id], onDelete: Restrict)
   assignment_resources AssignmentResource[]
 
   @@index([organization_id])
+  @@index([course_id])
   @@index([uploader_id])
+  @@index([archived_at])
   @@map("resources")
 }
 
@@ -452,25 +459,29 @@ model AssignmentChangeRequest {
 // MEETINGS — tenant
 // ---------------------------------------------------------------------------
 model Meeting {
-  id              String    @id @default(uuid()) @db.Uuid
-  organization_id String    @db.Uuid
-  course_id       String    @db.Uuid
-  title           String
-  description     String?
-  starts_at       DateTime  @db.Timestamptz
-  ends_at         DateTime? @db.Timestamptz
-  recorded_by     String?   @db.Uuid
-  created_at      DateTime  @default(now()) @db.Timestamptz
-  updated_at      DateTime  @updatedAt @db.Timestamptz
+  id               String    @id @default(uuid()) @db.Uuid
+  organization_id  String    @db.Uuid
+  course_id        String    @db.Uuid
+  title            String
+  description      String?
+  type             String?
+  duration_minutes Int?
+  starts_at        DateTime  @db.Timestamptz
+  ends_at          DateTime? @db.Timestamptz
+  recorded_by      String?   @db.Uuid
+  archived_at      DateTime? @db.Timestamptz
+  created_at       DateTime  @default(now()) @db.Timestamptz
+  updated_at       DateTime  @updatedAt @db.Timestamptz
 
-  organization        Organization         @relation(fields: [organization_id], references: [id], onDelete: Restrict)
-  course              Course               @relation(fields: [course_id], references: [id], onDelete: Restrict)
-  recordedByUser      User?                @relation("MeetingRecordedBy", fields: [recorded_by], references: [id], onDelete: Restrict)
-  attendance_records  AttendanceRecord[]
+  organization       Organization         @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  course             Course               @relation(fields: [course_id], references: [id], onDelete: Restrict)
+  recordedByUser     User?                @relation("MeetingRecordedBy", fields: [recorded_by], references: [id], onDelete: Restrict)
+  attendance_records AttendanceRecord[]
 
   @@index([organization_id])
   @@index([course_id])
   @@index([starts_at])
+  @@index([archived_at])
   @@map("meetings")
 }
 
@@ -531,6 +542,7 @@ model NotificationDelivery {
   user_id         String              @db.Uuid
   channel         NotificationChannel
   status          DeliveryStatus      @default(PENDING)
+  read_at         DateTime?           @db.Timestamptz
   sent_at         DateTime?           @db.Timestamptz
   created_at      DateTime            @default(now()) @db.Timestamptz
   updated_at      DateTime            @updatedAt @db.Timestamptz
@@ -541,6 +553,7 @@ model NotificationDelivery {
   @@index([notification_id])
   @@index([user_id])
   @@index([status])
+  @@index([user_id, read_at])
   @@map("notification_deliveries")
 }
 
@@ -554,6 +567,10 @@ model ReportExport {
   parameters      Json?
   status          ReportStatus @default(PENDING)
   file_url        String?
+  r2_key          String?
+  format          String       @default("csv")
+  completed_at    DateTime?    @db.Timestamptz
+  expires_at      DateTime?    @db.Timestamptz
   requested_by    String       @db.Uuid
   created_at      DateTime     @default(now()) @db.Timestamptz
   updated_at      DateTime     @updatedAt @db.Timestamptz
@@ -562,6 +579,7 @@ model ReportExport {
   requestedBy  User         @relation(fields: [requested_by], references: [id], onDelete: Restrict)
 
   @@index([organization_id])
+  @@index([organization_id, status])
   @@index([status])
   @@index([requested_by])
   @@map("report_exports")
@@ -577,6 +595,8 @@ model AuditLog {
   action          String
   entity_type     String
   entity_id       String
+  previous_state  Json?
+  new_state       Json?
   metadata        Json?
   ip_address      String?
   created_at      DateTime  @default(now()) @db.Timestamptz
@@ -589,6 +609,7 @@ model AuditLog {
   @@index([entity_type, entity_id])
   @@index([action])
   @@index([created_at])
+  @@index([organization_id, created_at])
   @@map("audit_logs")
 }
 

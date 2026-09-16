@@ -6,7 +6,12 @@ export interface EmailDispatchJobData {
   organizationId: string;
   to: string;
   subject: string;
-  html: string;
+  /** Legacy raw-HTML body. Either this or templateId+variables must be provided. */
+  html?: string;
+  /** Template registry id — renders via templates when html is absent. */
+  templateId?: string;
+  variables?: Record<string, string | number>;
+  /** Back-reference to the EMAIL NotificationDelivery row (for status/guard updates). */
   notificationId?: string;
 }
 

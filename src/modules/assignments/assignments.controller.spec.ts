@@ -6,6 +6,7 @@ import {
   ExecutionContext,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -400,17 +401,17 @@ describe('AssignmentsController (functional / HTTP)', () => {
       expect(service.update).not.toHaveBeenCalledWith(ORG_B, expect.anything(), expect.anything(), expect.anything());
     });
 
-    it('maps an expired edit window to 400 ASSIGNMENT_EDIT_WINDOW_EXPIRED', async () => {
+    it('maps an expired edit window to 409 ASSIGNMENT_EDIT_WINDOW_EXPIRED', async () => {
       currentUser = ADMIN_A;
       service.update.mockRejectedValue(
-        new BadRequestException({ code: 'ASSIGNMENT_EDIT_WINDOW_EXPIRED', message: 'Edit window expired' }),
+        new ConflictException({ code: 'ASSIGNMENT_EDIT_WINDOW_EXPIRED', message: 'Edit window expired' }),
       );
 
       const res = await request(app.getHttpServer())
         .patch(`/api/v1/assignments/${ASSIGNMENT_ID}`)
         .send({ title: 'Too late' });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('ASSIGNMENT_EDIT_WINDOW_EXPIRED');
     });
 

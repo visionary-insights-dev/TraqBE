@@ -6,6 +6,8 @@ import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { EmailQueueModule } from '../../jobs/queues/email.queue.js';
+import { AuditModule } from '../audit/audit.module.js';
+import { InvitationsModule } from '../invitations/invitations.module.js';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { EmailQueueModule } from '../../jobs/queues/email.queue.js';
       inject: [ConfigService],
     }),
     EmailQueueModule,
+    AuditModule,
+    InvitationsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

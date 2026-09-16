@@ -1,6 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { NotificationsGateway } from '../notifications/notifications.gateway.js';
+import { ANALYTICS_QUEUE } from '../../jobs/queues/analytics.queue.js';
+import type { AnalyticsRefreshJobData } from '../../jobs/processors/analytics-refresh.processor.js';
 import { UpdateSettingsDto } from './dto/update-settings.dto.js';
 
 export const ORG_SETTINGS_DEFAULTS = {
@@ -32,6 +37,8 @@ export class OrganizationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    @InjectQueue(ANALYTICS_QUEUE) private readonly analyticsQueue: Queue<AnalyticsRefreshJobData>,
+    private readonly gateway: NotificationsGateway,
   ) {}
 
   // =========================================================================
@@ -142,6 +149,15 @@ export class OrganizationsService {
         entityId: organizationId,
         metadata: Object.fromEntries(updates.map((u) => [u.key, u.value])),
       });
+
+      // Settings affect every progress calculation — refresh the org dashboard
+      // and push a realtime update to connected admins.
+      await this.analyticsQueue.add(
+        'refresh',
+        { organizationId, entity: 'dashboard' },
+        { jobId: `analytics-dashboard-${organizationId}` },
+      );
+      this.gateway.emitDashboardAnalyticsUpdated(organizationId);
     }
 
     return this.getSettings(organizationId);

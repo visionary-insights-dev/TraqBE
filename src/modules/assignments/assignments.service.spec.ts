@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -141,6 +142,7 @@ describe('AssignmentsService', () => {
   let emailQueue: { add: ReturnType<typeof vi.fn> };
   let assignmentsQueue: { add: ReturnType<typeof vi.fn> };
   let analyticsQueue: { add: ReturnType<typeof vi.fn> };
+  let gateway: { emitAssignmentStatusChanged: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -201,6 +203,10 @@ describe('AssignmentsService', () => {
       add: vi.fn().mockResolvedValue(undefined),
     };
 
+    gateway = {
+      emitAssignmentStatusChanged: vi.fn(),
+    };
+
     service = new AssignmentsService(
       prisma as any,
       audit as any,
@@ -208,6 +214,7 @@ describe('AssignmentsService', () => {
       emailQueue as any,
       assignmentsQueue as any,
       analyticsQueue as any,
+      gateway as any,
     );
   });
 
@@ -626,7 +633,7 @@ describe('AssignmentsService', () => {
 
       await expectHttpError(
         service.update(ORG_A, ASSIGNMENT_ID, { title: 'Too late' }, ADMIN_A.id),
-        BadRequestException,
+        ConflictException,
         'ASSIGNMENT_EDIT_WINDOW_EXPIRED',
       );
 
