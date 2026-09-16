@@ -508,7 +508,7 @@ export class AuthService {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      path: '/api/v1/auth',
+      path: '/',
       maxAge: REFRESH_TOKEN_EXPIRY_MS,
     });
   }
@@ -518,7 +518,7 @@ export class AuthService {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      path: '/api/v1/auth',
+      path: '/',
     });
   }
 
