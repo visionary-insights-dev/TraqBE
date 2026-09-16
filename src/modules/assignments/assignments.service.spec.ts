@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -632,7 +633,7 @@ describe('AssignmentsService', () => {
 
       await expectHttpError(
         service.update(ORG_A, ASSIGNMENT_ID, { title: 'Too late' }, ADMIN_A.id),
-        BadRequestException,
+        ConflictException,
         'ASSIGNMENT_EDIT_WINDOW_EXPIRED',
       );
 

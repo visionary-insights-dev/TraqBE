@@ -41,7 +41,7 @@ export class AttendanceController {
     @Param('id') id: string,
     @Body() dto: RecordAttendanceDto,
   ) {
-    return this.attendanceService.recordBulk(user.organizationId, id, dto, user.id);
+    return this.attendanceService.recordBulk(user.organizationId, id, dto, user.id, user.roles);
   }
 
   @Patch(':scholarId')

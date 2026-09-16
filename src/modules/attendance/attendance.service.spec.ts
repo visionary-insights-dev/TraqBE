@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { AttendanceStatus, NotificationChannel } from '@prisma/client';
+import { AttendanceStatus, NotificationChannel, Role } from '@prisma/client';
 import { AnalyticsService } from '../analytics/analytics.service.js';
 import { AttendanceService } from './attendance.service.js';
 
@@ -17,6 +17,9 @@ const COURSE_ID = 'course-00000000-0000-0000-0000-000000000001';
 const SCHOLAR_1 = 'user-00000000-0000-0000-0000-000000000002';
 const SCHOLAR_2 = 'user-00000000-0000-0000-0000-000000000003';
 const SCHOLAR_NOT_ENROLLED = 'user-00000000-0000-0000-0000-000000000099';
+
+const ACTOR_ROLES_ADMIN: Role[] = [Role.SUPER_ADMIN];
+const ACTOR_ROLES_MENTOR: Role[] = [Role.MENTOR];
 
 const STARTS_AT = new Date('2026-01-10T10:00:00.000Z');
 
@@ -71,6 +74,9 @@ describe('AttendanceService', () => {
       courseMembership: {
         findMany: vi.fn(),
       },
+      mentorScholarAssignment: {
+        findFirst: vi.fn(),
+      },
       user: {
         findMany: vi.fn(),
       },
@@ -124,7 +130,7 @@ describe('AttendanceService', () => {
       );
 
       await expect(
-        service.recordBulk(ORG_A, MEETING_ID, { records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT }] }, ACTOR_ID),
+        service.recordBulk(ORG_A, MEETING_ID, { records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT }] }, ACTOR_ID, ACTOR_ROLES_ADMIN),
       ).rejects.toThrow(NotFoundException);
 
       expect(prisma.attendanceRecord.upsert).not.toHaveBeenCalled();
@@ -141,18 +147,81 @@ describe('AttendanceService', () => {
             { scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT },
             { scholarId: SCHOLAR_NOT_ENROLLED, status: AttendanceStatus.PRESENT },
           ],
-        }, ACTOR_ID),
+        }, ACTOR_ID, ACTOR_ROLES_ADMIN),
       ).rejects.toThrow(ForbiddenException);
 
       expect(prisma.attendanceRecord.upsert).not.toHaveBeenCalled();
       expect(audit.log).not.toHaveBeenCalled();
     });
 
+    it('throws FORBIDDEN when a MENTOR records attendance for a course they are not assigned to (release-blocking)', async () => {
+      prisma.mentorScholarAssignment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.recordBulk(ORG_A, MEETING_ID, {
+          records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT }],
+        }, ACTOR_ID, ACTOR_ROLES_MENTOR),
+      ).rejects.toThrow(ForbiddenException);
+
+      // Lookup is scoped by org, mentor, meeting course and active pairing only.
+      expect(prisma.mentorScholarAssignment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            organization_id: ORG_A,
+            mentor_id: ACTOR_ID,
+            course_id: COURSE_ID,
+            ends_at: null,
+          },
+        }),
+      );
+      expect(prisma.attendanceRecord.upsert).not.toHaveBeenCalled();
+      expect(audit.log).not.toHaveBeenCalled();
+      expect(analyticsQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('allows a MENTOR who has an active pairing on the meeting course', async () => {
+      prisma.mentorScholarAssignment.findFirst.mockResolvedValue({ id: 'pair-1' });
+      prisma.courseMembership.findMany.mockResolvedValue([{ user_id: SCHOLAR_1 }]);
+      prisma.user.findMany.mockResolvedValue([{ id: SCHOLAR_1, email: 's1@example.com' }]);
+      prisma.attendanceRecord.findUnique.mockResolvedValue(null);
+      prisma.attendanceRecord.upsert.mockResolvedValue(makeRecord({ status: AttendanceStatus.PRESENT }));
+
+      const result = await service.recordBulk(ORG_A, MEETING_ID, {
+        records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT }],
+      }, ACTOR_ID, ACTOR_ROLES_MENTOR);
+
+      expect(prisma.mentorScholarAssignment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            mentor_id: ACTOR_ID,
+            course_id: COURSE_ID,
+            ends_at: null,
+          }),
+        }),
+      );
+      expect(prisma.attendanceRecord.upsert).toHaveBeenCalled();
+      expect(result.records[0]).toEqual({ scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT, isNew: true });
+    });
+
+    it('skips mentor scoping for SUPER_ADMIN actors', async () => {
+      prisma.courseMembership.findMany.mockResolvedValue([{ user_id: SCHOLAR_1 }]);
+      prisma.user.findMany.mockResolvedValue([]);
+      prisma.attendanceRecord.findUnique.mockResolvedValue(null);
+      prisma.attendanceRecord.upsert.mockResolvedValue(makeRecord());
+
+      await service.recordBulk(ORG_A, MEETING_ID, {
+        records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT }],
+      }, ACTOR_ID, ACTOR_ROLES_ADMIN);
+
+      expect(prisma.mentorScholarAssignment.findFirst).not.toHaveBeenCalled();
+      expect(prisma.attendanceRecord.upsert).toHaveBeenCalled();
+    });
+
     it('scopes membership validation by organization_id and course_id', async () => {
       prisma.courseMembership.findMany.mockResolvedValue([{ user_id: SCHOLAR_1 }]);
       prisma.user.findMany.mockResolvedValue([]);
 
-      await service.recordBulk(ORG_A, MEETING_ID, { records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT }] }, ACTOR_ID);
+      await service.recordBulk(ORG_A, MEETING_ID, { records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT }] }, ACTOR_ID, ACTOR_ROLES_ADMIN);
 
       expect(prisma.courseMembership.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -173,7 +242,7 @@ describe('AttendanceService', () => {
 
       const result = await service.recordBulk(ORG_A, MEETING_ID, {
         records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.ABSENT }],
-      }, ACTOR_ID);
+      }, ACTOR_ID, ACTOR_ROLES_ADMIN);
 
       expect(prisma.attendanceRecord.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -212,7 +281,7 @@ describe('AttendanceService', () => {
 
       const result = await service.recordBulk(ORG_A, MEETING_ID, {
         records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.EXCUSED }],
-      }, ACTOR_ID);
+      }, ACTOR_ID, ACTOR_ROLES_ADMIN);
 
       expect(result.records[0]).toEqual({ scholarId: SCHOLAR_1, status: AttendanceStatus.EXCUSED, isNew: true });
       expect(audit.log).toHaveBeenCalledWith(
@@ -230,7 +299,7 @@ describe('AttendanceService', () => {
 
       await service.recordBulk(ORG_A, MEETING_ID, {
         records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT }],
-      }, ACTOR_ID);
+      }, ACTOR_ID, ACTOR_ROLES_ADMIN);
 
       expect(audit.log).not.toHaveBeenCalled();
       expect(analyticsQueue.add).not.toHaveBeenCalled();
@@ -247,7 +316,7 @@ describe('AttendanceService', () => {
           { scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT },
           { scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT },
         ],
-      }, ACTOR_ID);
+      }, ACTOR_ID, ACTOR_ROLES_ADMIN);
 
       expect(analyticsQueue.add).toHaveBeenCalledWith(
         'refresh',
@@ -266,7 +335,7 @@ describe('AttendanceService', () => {
 
       await service.recordBulk(ORG_A, MEETING_ID, {
         records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.ABSENT }],
-      }, ACTOR_ID);
+      }, ACTOR_ID, ACTOR_ROLES_ADMIN);
 
       // Notification goes through NotificationsService (never inline in a tx).
       expect(notifications.create).toHaveBeenCalledWith(
@@ -290,7 +359,7 @@ describe('AttendanceService', () => {
 
       await service.recordBulk(ORG_A, MEETING_ID, {
         records: [{ scholarId: SCHOLAR_1, status: AttendanceStatus.PRESENT }],
-      }, ACTOR_ID);
+      }, ACTOR_ID, ACTOR_ROLES_ADMIN);
 
       expect(notifications.create).not.toHaveBeenCalled();
     });

@@ -93,6 +93,7 @@ describe('AttendanceController (functional / HTTP)', () => {
         MEETING_ID,
         { records: [{ scholarId: SCHOLAR_ID, status: 'PRESENT' }] },
         ADMIN_A.id,
+        ADMIN_A.roles,
       );
     });
 

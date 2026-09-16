@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -204,7 +205,7 @@ export class AssignmentsService {
       assignment.status === 'PUBLISHED' &&
       (!assignment.edit_window_expires_at || new Date() >= assignment.edit_window_expires_at)
     ) {
-      throw new BadRequestException({
+      throw new ConflictException({
         code: 'ASSIGNMENT_EDIT_WINDOW_EXPIRED',
         message: 'Assignment is no longer editable; request a change instead',
       });

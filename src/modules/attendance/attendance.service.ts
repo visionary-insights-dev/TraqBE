@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
-import { AttendanceStatus, NotificationChannel } from '@prisma/client';
+import { AttendanceStatus, NotificationChannel, Role } from '@prisma/client';
 import type { Queue } from 'bull';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -26,9 +26,35 @@ export class AttendanceService {
   // =========================================================================
   // BULK RECORD ATTENDANCE (upsert, allow re-recording)
   // =========================================================================
-  async recordBulk(organizationId: string, meetingId: string, dto: RecordAttendanceDto, actorId: string) {
+  async recordBulk(
+    organizationId: string,
+    meetingId: string,
+    dto: RecordAttendanceDto,
+    actorId: string,
+    actorRoles: Role[] | string[],
+  ) {
     // 1. Validate meeting is org-scoped (throws MEETING_NOT_FOUND if not)
     const meeting = await this.meetingsService.getMeeting(organizationId, meetingId);
+
+    // 1b. Release-blocking mentor scoping: MENTOR actors may only record
+    //     attendance for courses they are actively assigned to. SUPER_ADMIN is exempt.
+    if ((actorRoles ?? []).includes(Role.MENTOR)) {
+      const pairing = await this.prisma.mentorScholarAssignment.findFirst({
+        where: {
+          organization_id: organizationId,
+          mentor_id: actorId,
+          course_id: meeting.course_id,
+          ends_at: null,
+        },
+        select: { id: true },
+      });
+      if (!pairing) {
+        throw new ForbiddenException({
+          code: 'FORBIDDEN',
+          message: 'Mentor is not assigned to this course',
+        });
+      }
+    }
 
     // 2. Validate all scholars are members of the meeting's course
     const scholarIds = dto.records.map((r) => r.scholarId);
